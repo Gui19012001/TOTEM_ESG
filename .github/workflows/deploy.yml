@@ -1,29 +1,24 @@
-# .github/workflows/deploy.yml
-# Dispara no push para main → deploy automático no Railway
+- name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y software-properties-common
+          sudo add-apt-repository -y ppa:deadsnakes/ppa
+          sudo apt-get update -qq
+          sudo apt-get install -y \
+            python3.11 python3.11-venv python3.11-dev python3.11-distutils \
+            git zip unzip openjdk-17-jdk \
+            libffi-dev libssl-dev autoconf automake libtool \
+            pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev \
+            cmake libltdl-dev
 
-name: Deploy Railway
+      - name: Create Python 3.11 venv and install Buildozer
+        run: |
+          python3.11 -m venv .venv
+          . .venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install --upgrade buildozer cython
 
-on:
-  push:
-    branches: [main]
-  workflow_dispatch:
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-
-      - name: Deploy to Railway
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway up --service totem-esg-backend --detach
-
-      # Opcional: rodar testes antes do deploy
-      # - name: Run tests
-      #   run: |
-      #     pip install -r backend/requirements.txt
-      #     pytest backend/tests/
+      - name: Build APK
+        run: |
+          . .venv/bin/activate
+          buildozer -v android debug

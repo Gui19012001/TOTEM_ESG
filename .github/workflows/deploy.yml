@@ -1,0 +1,29 @@
+# .github/workflows/deploy.yml
+# Dispara no push para main → deploy automático no Railway
+
+name: Deploy Railway
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy to Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: railway up --service totem-esg-backend --detach
+
+      # Opcional: rodar testes antes do deploy
+      # - name: Run tests
+      #   run: |
+      #     pip install -r backend/requirements.txt
+      #     pytest backend/tests/

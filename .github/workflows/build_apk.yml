@@ -68,7 +68,8 @@ jobs:
           echo "$KEYSTORE_BASE64" | base64 --decode > keystore.jks
           APK=$(find bin/ -name "*.apk" | head -1)
           echo "APK encontrado: $APK"
-          APKSIGNER="$HOME/.buildozer/android/platform/android-sdk/build-tools/34.0.0/apksigner"
+          APKSIGNER=$(find $HOME/.buildozer/android/platform/android-sdk/build-tools/ -name "apksigner" | head -1)
+          echo "apksigner encontrado: $APKSIGNER"
           $APKSIGNER sign \
             --ks keystore.jks \
             --ks-key-alias "$KEY_ALIAS" \

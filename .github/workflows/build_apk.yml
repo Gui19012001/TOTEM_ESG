@@ -1,4 +1,35 @@
-- name: Install system dependencies
+name: Build APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'totem/**'
+      - 'buildozer.spec'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Inject API_URL
+        run: |
+          sed -i 's|https://totem-esg.up.railway.app|${{ secrets.API_URL }}|g' totem/totem_app.py
+
+      - name: Cache Buildozer
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.buildozer
+            ~/.gradle
+          key: buildozer-${{ hashFiles('buildozer.spec') }}
+          restore-keys: buildozer-
+
+      - name: Install system dependencies
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y software-properties-common
@@ -22,3 +53,10 @@
         run: |
           . .venv/bin/activate
           buildozer -v android debug
+
+      - name: Sign APK
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEY_ALIAS:       ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD:    ${{ secrets.KEY_PASSWORD }}
+          STORE_PASSWORD:  ${{ secrets.STORE_PASSWORD

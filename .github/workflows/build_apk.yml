@@ -1,0 +1,102 @@
+# .github/workflows/build_apk.yml
+# Gera APK assinado a cada push em main (ou manualmente)
+# Secrets necessários no GitHub:
+#   KEYSTORE_BASE64   — keystore.jks em base64  (base64 -w 0 keystore.jks)
+#   KEY_ALIAS         — alias da chave
+#   KEY_PASSWORD      — senha da chave
+#   STORE_PASSWORD    — senha do keystore
+#   API_URL           — URL do Railway (ex: https://totem-esg.up.railway.app)
+
+name: Build APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'totem/**'
+      - 'buildozer.spec'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Injetar URL do backend no app ──────────────────────
+      - name: Inject API_URL into totem_app.py
+        run: |
+          sed -i 's|https://totem-esg.up.railway.app|${{ secrets.API_URL }}|g' totem/totem_app.py
+
+      # ── Cache do Buildozer (.buildozer é pesado ~3GB) ──────
+      - name: Cache Buildozer global
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.buildozer
+            ~/.gradle
+          key: buildozer-${{ hashFiles('buildozer.spec') }}
+          restore-keys: buildozer-
+
+      # ── Dependências do sistema ────────────────────────────
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y \
+            python3-pip python3-venv \
+            git zip unzip openjdk-17-jdk \
+            libffi-dev libssl-dev \
+            autoconf automake libtool \
+            pkg-config zlib1g-dev \
+            libncurses5-dev libncursesw5-dev \
+            cmake libltdl-dev
+
+      - name: Install Buildozer
+        run: pip3 install --upgrade buildozer cython
+
+      # ── Build APK (debug primeiro para validar) ───────────
+      - name: Build APK
+        run: buildozer -v android debug
+
+      # ── Signing do APK ────────────────────────────────────
+      - name: Sign APK
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEY_ALIAS:       ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD:    ${{ secrets.KEY_PASSWORD }}
+          STORE_PASSWORD:  ${{ secrets.STORE_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > keystore.jks
+
+          # Localiza o APK gerado pelo Buildozer
+          APK=$(find bin/ -name "*.apk" | head -1)
+          echo "APK encontrado: $APK"
+
+          # Assina com apksigner (incluído no Android SDK)
+          APKSIGNER="$HOME/.buildozer/android/platform/android-sdk/build-tools/34.0.0/apksigner"
+          $APKSIGNER sign \
+            --ks keystore.jks \
+            --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass "pass:$STORE_PASSWORD" \
+            --key-pass "pass:$KEY_PASSWORD" \
+            --out bin/totem-esg-signed.apk \
+            "$APK"
+
+          echo "APK assinado: bin/totem-esg-signed.apk"
+
+      # ── Upload do APK como artifact ───────────────────────
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: totem-esg-apk
+          path: bin/totem-esg-signed.apk
+          retention-days: 30
+
+      # ── (Opcional) Criar Release no GitHub ───────────────
+      # - name: Create Release
+      #   uses: softprops/action-gh-release@v2
+      #   if: startsWith(github.ref, 'refs/tags/')
+      #   with:
+      #     files: bin/totem-esg-signed.apk

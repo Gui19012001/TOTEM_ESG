@@ -52,6 +52,8 @@ jobs:
           pip install --upgrade buildozer cython
 
       - name: Build APK
+        env:
+          JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
         run: |
           . .venv/bin/activate
           buildozer -v android debug

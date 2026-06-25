@@ -194,7 +194,7 @@ def chat(
     payload = {
         "system_instruction": {"parts": [{"text": system_text}]},
         "contents": contents,
-        "generationConfig": {"maxOutputTokens": 1024, "temperature": 0.7},
+        "generationConfig": {"maxOutputTokens": 2048, "temperature": 0.7},
     }
 
     try:

@@ -171,18 +171,36 @@ def chat(req: ChatRequest):
     }
     topic_label = topics.get(req.topic, req.topic)
 
+    operator = req.tablet_id.split("-")[-1].title() if "-" in req.tablet_id else "colaborador"
+
     system_text = (
-        "Voce e o Agente ESG de uma fabrica industrial da Ibero Group.\n"
-        "Responda SEMPRE em portugues brasileiro, de forma clara e simples.\n"
-        "O publico sao operadores do chao de fabrica — use frases curtas e linguagem direta.\n"
-        "Nao use markdown, asteriscos, hashtags ou formatacao especial nas respostas.\n"
-        f"Foco atual: {topic_label}.\n\n"
+        f"Voce e o Agente ESG da Ibero Group, um assistente simpatico e acolhedor.
+"
+        f"Voce esta conversando com {operator}, um colaborador da Ibero Group.
+"
+        "Responda SEMPRE em portugues brasileiro com linguagem simples e calorosa.
+"
+        "Use o nome do colaborador nas respostas para criar conexao pessoal.
+"
+        "Seja positivo, encorajador e represente os valores da Ibero Group.
+"
+        "Use frases curtas. NUNCA use markdown, asteriscos ou hashtags.
+"
+        "Escreva em paragrafos simples como se conversasse pessoalmente.
+"
+        f"Foco atual: {topic_label}.
+
+"
     )
     if knowledge_text:
-        system_text += f"BASE DE CONHECIMENTO DA EMPRESA:\n{knowledge_text}\n"
+        system_text += f"BASE DE CONHECIMENTO DA EMPRESA:
+{knowledge_text}
+"
     else:
-        system_text += "Base de conhecimento ainda nao configurada. Use boas praticas gerais de ESG.\n"
-    system_text += "\nSe nao souber, diga honestamente e sugira contatar o responsavel ESG."
+        system_text += "Base de conhecimento ainda nao configurada. Use boas praticas gerais de ESG.
+"
+    system_text += f"
+Se nao souber algo, seja honesto com {operator} e indique o responsavel ESG."
 
     # Histórico
     contents = []

@@ -615,8 +615,10 @@ class ChatScreen(Screen):
             cursor_color=C_BLUE,
             hint_text_color=C_GRAY_LIGHT,
             padding=[dp(14), dp(12)],
+            keyboard_mode='managed',  # impede teclado nativo Android
         )
         self.txt.bind(on_text_validate=self.send_msg)
+        self.txt.bind(focus=self._on_input_focus)
 
         self.send_btn = Btn(
             text=">",
@@ -851,15 +853,38 @@ class ChatScreen(Screen):
         self._set_status("Online", C_GREEN)
         Clock.schedule_once(lambda dt: self._scroll_end(), 0.15)
 
+    def _on_input_focus(self, instance, value):
+        if value:
+            instance.focus = False
+
+    def _ping_server(self):
+        UrlRequest(
+            f"{API_URL}/ping",
+            on_success=lambda req, res: Clock.schedule_once(
+                lambda dt: self._on_reconnect(), 0),
+            on_failure=lambda req, res: Clock.schedule_once(
+                lambda dt: self._ping_server_retry(), 0),
+            on_error=lambda req, err: Clock.schedule_once(
+                lambda dt: self._ping_server_retry(), 0),
+            timeout=10,
+        )
+
+    def _on_reconnect(self):
+        self._set_status("Online", C_GREEN)
+
+    def _ping_server_retry(self):
+        Clock.schedule_once(lambda dt: self._ping_server(), 15)
+
     def _on_error(self):
         if self._typing and self._typing.parent:
             self.msg_box.remove_widget(self._typing)
         self._add_bubble(
-            "Erro de conexao. Verifique a rede e tente novamente.",
+            "Sem conexao com o servidor. Reconectando automaticamente...",
             is_user=False)
         self.is_loading = False
         self.send_btn.disabled = False
         self._set_status("Offline", C_RED)
+        Clock.schedule_once(lambda dt: self._ping_server(), 10)
 
     def _set_status(self, text, color):
         self.st_lbl.text  = text

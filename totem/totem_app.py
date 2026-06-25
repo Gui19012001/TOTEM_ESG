@@ -596,29 +596,35 @@ class ChatScreen(Screen):
         self.scroll.add_widget(self.msg_box)
         right.add_widget(self.scroll)
 
-        # Linha input
+        # Linha separadora
         inp_sep = Widget(size_hint_y=None, height=dp(1))
         bind_bg(inp_sep, C_BORDER)
         right.add_widget(inp_sep)
 
-        # Barra de input
-        inp_bar = BoxLayout(size_hint_y=None, height=dp(62),
-                            padding=[dp(12), dp(10)], spacing=dp(10))
+        # Display do que o operador está digitando
+        inp_bar = BoxLayout(size_hint_y=None, height=dp(54),
+                            padding=[dp(12), dp(8)], spacing=dp(10))
         bind_bg(inp_bar, C_WHITE)
 
-        from kivy.uix.textinput import TextInput
-        self.txt = TextInput(
-            hint_text=f"Ola {name}, o que deseja saber?",
-            font_size=sp(14), multiline=False,
-            background_color=C_BG,
-            foreground_color=C_DARK,
-            cursor_color=C_BLUE,
-            hint_text_color=C_GRAY_LIGHT,
-            padding=[dp(14), dp(12)],
-            keyboard_mode='managed',  # impede teclado nativo Android
+        self._chat_typed = ""
+        self.chat_display = Label(
+            text=f"Ola {name}, o que deseja saber?",
+            font_size=sp(14),
+            color=C_GRAY_LIGHT,
+            halign="left", valign="middle",
+            size_hint_x=1,
         )
-        self.txt.bind(on_text_validate=self.send_msg)
-        self.txt.bind(focus=self._on_input_focus)
+        disp_box = BoxLayout(padding=[dp(12), dp(6)])
+        with disp_box.canvas.before:
+            Color(*C_BG)
+            RoundedRectangle(pos=disp_box.pos, size=disp_box.size, radius=[dp(10)])
+            Color(*C_BORDER_MED)
+            Line(rounded_rectangle=(disp_box.x, disp_box.y,
+                                    disp_box.width, disp_box.height, dp(10)),
+                 width=dp(1.5))
+        disp_box.bind(pos=lambda w, v: self._redraw_inp_box(w),
+                      size=lambda w, v: self._redraw_inp_box(w))
+        disp_box.add_widget(self.chat_display)
 
         self.send_btn = Btn(
             text=">",
@@ -627,9 +633,13 @@ class ChatScreen(Screen):
             size_hint_x=None, width=dp(50), r=10)
         self.send_btn.bind(on_press=self.send_msg)
 
-        inp_bar.add_widget(self.txt)
+        inp_bar.add_widget(disp_box)
         inp_bar.add_widget(self.send_btn)
         right.add_widget(inp_bar)
+
+        # Teclado virtual proprio (igual welcome screen)
+        chat_kb = self._build_chat_keyboard(name)
+        right.add_widget(chat_kb)
 
         root.add_widget(right)
         self.add_widget(root)
@@ -651,8 +661,8 @@ class ChatScreen(Screen):
         name = getattr(app, "operator_name", "Operador")
         if hasattr(self, "greet_lbl"):
             self.greet_lbl.text = f"Ola, {name}!"
-        if hasattr(self, "txt"):
-            self.txt.hint_text = f"Ola {name}, o que deseja saber?"
+        self._chat_typed = ""
+        self._update_chat_display()
         self.history.clear()
         self._show_welcome()
 
@@ -800,11 +810,76 @@ class ChatScreen(Screen):
             self.quick_grid.add_widget(btn)
 
     def _prefill(self, q):
-        self.txt.text = q
+        self._chat_typed = q
+        self._update_chat_display()
         self.send_msg()
 
+    def _redraw_inp_box(self, w):
+        w.canvas.before.clear()
+        with w.canvas.before:
+            Color(*C_BG)
+            RoundedRectangle(pos=w.pos, size=w.size, radius=[dp(10)])
+            Color(*C_BORDER_MED)
+            Line(rounded_rectangle=(w.x, w.y, w.width, w.height, dp(10)),
+                 width=dp(1.5))
+
+    def _build_chat_keyboard(self, name):
+        rows = [
+            list("QWERTYUIOP"),
+            list("ASDFGHJKL"),
+            list("ZXCVBNM"),
+        ]
+        kb = BoxLayout(orientation="vertical",
+                       size_hint_y=None, height=dp(162), spacing=dp(3),
+                       padding=[dp(8), dp(4)])
+        bind_bg(kb, C_WHITE)
+        for row in rows:
+            rbox = BoxLayout(spacing=dp(3), size_hint_y=None, height=dp(38))
+            for k in row:
+                btn = Btn(text=k, bg=C_KEY_BG, fg=C_DARK,
+                          font_size=sp(13), bold=True, r=6,
+                          border_color=C_BORDER_MED)
+                btn.bind(on_press=lambda b, k=k: self._chat_type(k))
+                rbox.add_widget(btn)
+            kb.add_widget(rbox)
+        spec = BoxLayout(spacing=dp(3), size_hint_y=None, height=dp(38),
+                         padding=[dp(8), 0])
+        del_btn = Btn(text="< Del", bg=C_KEY_BG, fg=C_RED,
+                      font_size=sp(12), bold=True, r=6,
+                      border_color=C_BORDER_MED)
+        del_btn.bind(on_press=lambda b: self._chat_type("DEL"))
+        spc_btn = Btn(text="Espaco", bg=C_KEY_BG, fg=C_GRAY,
+                      font_size=sp(12), r=6, border_color=C_BORDER_MED)
+        spc_btn.bind(on_press=lambda b: self._chat_type(" "))
+        send_kb_btn = Btn(text="Enviar >", bg=C_BLUE, fg=C_WHITE,
+                          font_size=sp(13), bold=True, r=6)
+        send_kb_btn.bind(on_press=self.send_msg)
+        spec.add_widget(del_btn)
+        spec.add_widget(spc_btn)
+        spec.add_widget(send_kb_btn)
+        kb.add_widget(spec)
+        return kb
+
+    def _chat_type(self, k):
+        if k == "DEL":
+            self._chat_typed = self._chat_typed[:-1]
+        else:
+            if len(self._chat_typed) < 120:
+                self._chat_typed += k
+        self._update_chat_display()
+
+    def _update_chat_display(self):
+        app  = App.get_running_app()
+        name = getattr(app, "operator_name", "Operador")
+        if self._chat_typed:
+            self.chat_display.text  = self._chat_typed
+            self.chat_display.color = C_DARK
+        else:
+            self.chat_display.text  = f"Ola {name}, o que deseja saber?"
+            self.chat_display.color = C_GRAY_LIGHT
+
     def send_msg(self, *_):
-        text = self.txt.text.strip()
+        text = self._chat_typed.strip() if hasattr(self, "_chat_typed") else ""
         if not text or self.is_loading:
             return
         app  = App.get_running_app()
@@ -813,7 +888,8 @@ class ChatScreen(Screen):
         if hasattr(self, "_welcome_wrap") and self._welcome_wrap.parent:
             self.msg_box.remove_widget(self._welcome_wrap)
 
-        self.txt.text = ""
+        self._chat_typed = ""
+        self._update_chat_display()
         self.is_loading = True
         self.send_btn.disabled = True
 
@@ -937,6 +1013,7 @@ class TotemESGApp(App):
 
     def build(self):
         Window.clearcolor = get_color_from_hex("#F0F2F7")
+        # Faz o teclado nativo empurrar o layout para cima em vez de sobrepor
         sm = ScreenManager(transition=FadeTransition(duration=0.25))
         sm.add_widget(WelcomeScreen(name="welcome"))
         sm.add_widget(ChatScreen(name="chat"))

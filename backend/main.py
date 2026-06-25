@@ -1,15 +1,15 @@
 """
 Totem ESG — Backend FastAPI com Google Gemini (gratuito)
 Deploy: Render.com (free tier)
+Fixes: SQLite threading, Pydantic v1, type hints compatíveis
 """
 
 from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List, Dict, Any
 import sqlite3
 import os
-import json
 import requests
 from datetime import datetime
 from pathlib import Path
@@ -24,7 +24,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-GEMINI_KEY  = os.environ["GEMINI_API_KEY"]
+GEMINI_KEY  = os.environ.get("GEMINI_API_KEY", "")
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "esg-admin-2024")
 DB_PATH     = Path(os.environ.get("DB_PATH", "totem.db"))
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -33,10 +33,11 @@ GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.
 
 # ── Banco de dados ────────────────────────────────────────────
 def init_db():
-    with sqlite3.connect(DB_PATH) as conn:
+    # check_same_thread=False necessário para FastAPI async
+    with sqlite3.connect(str(DB_PATH), check_same_thread=False) as conn:
         conn.executescript("""
             CREATE TABLE IF NOT EXISTS knowledge (
-                id       INTEGER PRIMARY KEY,
+                id       INTEGER PRIMARY KEY AUTOINCREMENT,
                 category TEXT NOT NULL,
                 title    TEXT NOT NULL,
                 content  TEXT NOT NULL,
@@ -55,32 +56,42 @@ def init_db():
                 topic    TEXT NOT NULL,
                 question TEXT NOT NULL
             );
-            INSERT OR IGNORE INTO quick_questions (topic, question) VALUES
-                ('ambiental', 'Qual e a meta de reducao de CO2?'),
-                ('ambiental', 'Como esta o consumo de agua?'),
-                ('ambiental', 'Quanto residuo reciclamos?'),
-                ('seguranca', 'Quantos dias sem acidentes?'),
-                ('seguranca', 'Quais EPIs devo usar?'),
-                ('social',    'Quais programas sociais temos?'),
-                ('politicas', 'Quais sao nossas certificacoes?');
         """)
+        # Insere perguntas padrão apenas se a tabela estiver vazia
+        count = conn.execute("SELECT COUNT(*) FROM quick_questions").fetchone()[0]
+        if count == 0:
+            conn.executescript("""
+                INSERT INTO quick_questions (topic, question) VALUES
+                    ('ambiental', 'Qual e a meta de reducao de CO2?'),
+                    ('ambiental', 'Como esta o consumo de agua?'),
+                    ('ambiental', 'Quanto residuo reciclamos?'),
+                    ('seguranca', 'Quantos dias sem acidentes?'),
+                    ('seguranca', 'Quais EPIs devo usar?'),
+                    ('social',    'Quais programas sociais temos?'),
+                    ('politicas', 'Quais sao nossas certificacoes?');
+            """)
 
 init_db()
 
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
+    # check_same_thread=False — correção do erro de threading do SQLite com FastAPI
+    conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
     conn.row_factory = sqlite3.Row
     try:
         yield conn
     finally:
         conn.close()
 
-# ── Modelos ───────────────────────────────────────────────────
+# ── Modelos Pydantic v1 compatíveis ───────────────────────────
 class ChatRequest(BaseModel):
     question:  str
     topic:     str = "ambiental"
     tablet_id: str = "totem-01"
-    history:   list[dict] = []
+    history:   List[Dict[str, Any]] = []
+
+    class Config:
+        # Pydantic v1
+        orm_mode = True
 
 class KnowledgeItem(BaseModel):
     category: str
@@ -91,9 +102,10 @@ class QuickQuestion(BaseModel):
     topic:    str
     question: str
 
+# ── Auth admin ────────────────────────────────────────────────
 def verify_admin(x_admin_token: str = Header(...)):
     if x_admin_token != ADMIN_TOKEN:
-        raise HTTPException(status_code=403, detail="Token inválido")
+        raise HTTPException(status_code=403, detail="Token invalido")
     return True
 
 # ── Endpoints públicos ────────────────────────────────────────
@@ -103,21 +115,41 @@ def health():
 
 @app.get("/ping")
 def ping():
-    """Keep-alive endpoint — evita o sleep do Render free tier"""
+    """Keep-alive — evita sleep do Render free tier"""
     return {"pong": True}
 
 @app.get("/api/quick-questions")
-def get_quick_questions(topic: Optional[str] = None, db: sqlite3.Connection = Depends(get_db)):
-    if topic:
-        rows = db.execute("SELECT * FROM quick_questions WHERE topic=?", (topic,)).fetchall()
-    else:
-        rows = db.execute("SELECT * FROM quick_questions").fetchall()
-    return [dict(r) for r in rows]
+def get_quick_questions(
+    topic: Optional[str] = None,
+    db: sqlite3.Connection = Depends(get_db)
+):
+    try:
+        if topic:
+            rows = db.execute(
+                "SELECT * FROM quick_questions WHERE topic=?", (topic,)
+            ).fetchall()
+        else:
+            rows = db.execute("SELECT * FROM quick_questions").fetchall()
+        return [dict(r) for r in rows]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/chat")
-async def chat(req: ChatRequest, db: sqlite3.Connection = Depends(get_db)):
+def chat(
+    req: ChatRequest,
+    db: sqlite3.Connection = Depends(get_db)
+):
+    if not GEMINI_KEY:
+        raise HTTPException(status_code=500, detail="GEMINI_API_KEY nao configurada")
+
     # Base de conhecimento
-    rows = db.execute("SELECT category, title, content FROM knowledge").fetchall()
+    try:
+        rows = db.execute(
+            "SELECT category, title, content FROM knowledge"
+        ).fetchall()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro banco: {str(e)}")
+
     knowledge_text = ""
     for row in rows:
         knowledge_text += f"[{row['category'].upper()}] {row['title']}:\n{row['content']}\n\n"
@@ -130,20 +162,25 @@ async def chat(req: ChatRequest, db: sqlite3.Connection = Depends(get_db)):
     }
     topic_label = topics.get(req.topic, req.topic)
 
-    system_text = f"""Voce e o Agente ESG de uma fabrica industrial.
-Responda SEMPRE em portugues brasileiro, de forma clara e simples.
-O publico sao operadores do chao de fabrica — use frases curtas e linguagem direta.
-Foco atual: {topic_label}.
+    system_text = (
+        "Voce e o Agente ESG de uma fabrica industrial.\n"
+        "Responda SEMPRE em portugues brasileiro, de forma clara e simples.\n"
+        "O publico sao operadores do chao de fabrica — use frases curtas e linguagem direta.\n"
+        f"Foco atual: {topic_label}.\n\n"
+    )
 
-{'BASE DE CONHECIMENTO DA EMPRESA:\n' + knowledge_text if knowledge_text else 'ATENCAO: Base de conhecimento ainda nao configurada. Responda com boas praticas gerais de ESG.'}
+    if knowledge_text:
+        system_text += f"BASE DE CONHECIMENTO DA EMPRESA:\n{knowledge_text}\n"
+    else:
+        system_text += "ATENCAO: Base de conhecimento ainda nao configurada. Responda com boas praticas gerais de ESG.\n"
 
-Se nao souber com as informacoes disponiveis, diga honestamente e sugira contatar o responsavel ESG."""
+    system_text += "\nSe nao souber, diga honestamente e sugira contatar o responsavel ESG."
 
     # Monta histórico para o Gemini
     contents = []
     for msg in req.history[-8:]:
-        role = "user" if msg["role"] == "user" else "model"
-        contents.append({"role": role, "parts": [{"text": msg["content"]}]})
+        role = "user" if msg.get("role") == "user" else "model"
+        contents.append({"role": role, "parts": [{"text": msg.get("content", "")}]})
     contents.append({"role": "user", "parts": [{"text": req.question}]})
 
     payload = {
@@ -158,52 +195,87 @@ Se nao souber com as informacoes disponiveis, diga honestamente e sugira contata
     try:
         resp = requests.post(GEMINI_URL, json=payload, timeout=30)
         resp.raise_for_status()
-        data   = resp.json()
-        answer = data["candidates"][0]["content"]["parts"][0]["text"]
+        data = resp.json()
 
-        db.execute(
-            "INSERT INTO logs (tablet_id, topic, question, answer, created) VALUES (?,?,?,?,?)",
-            (req.tablet_id, req.topic, req.question, answer, datetime.utcnow().isoformat())
-        )
-        db.commit()
+        # Extrai resposta com tratamento de erro
+        candidates = data.get("candidates", [])
+        if not candidates:
+            raise HTTPException(status_code=502, detail="Gemini nao retornou resposta")
+
+        answer = candidates[0]["content"]["parts"][0]["text"]
+
+        # Salva log
+        try:
+            db.execute(
+                "INSERT INTO logs (tablet_id, topic, question, answer, created) VALUES (?,?,?,?,?)",
+                (req.tablet_id, req.topic, req.question, answer,
+                 datetime.utcnow().isoformat())
+            )
+            db.commit()
+        except Exception:
+            pass  # Log falhou mas resposta ainda é retornada
+
         return {"answer": answer}
 
+    except HTTPException:
+        raise
+    except requests.exceptions.Timeout:
+        raise HTTPException(status_code=504, detail="Gemini timeout — tente novamente")
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(status_code=502, detail=f"Erro conexao Gemini: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Erro Gemini: {str(e)}")
 
 # ── Endpoints admin ───────────────────────────────────────────
 @app.get("/api/admin/knowledge", dependencies=[Depends(verify_admin)])
 def list_knowledge(db: sqlite3.Connection = Depends(get_db)):
-    rows = db.execute("SELECT * FROM knowledge ORDER BY category, title").fetchall()
+    rows = db.execute(
+        "SELECT * FROM knowledge ORDER BY category, title"
+    ).fetchall()
     return [dict(r) for r in rows]
 
 @app.post("/api/admin/knowledge", dependencies=[Depends(verify_admin)])
-def upsert_knowledge(item: KnowledgeItem, db: sqlite3.Connection = Depends(get_db)):
+def upsert_knowledge(
+    item: KnowledgeItem,
+    db: sqlite3.Connection = Depends(get_db)
+):
     existing = db.execute(
         "SELECT id FROM knowledge WHERE category=? AND title=?",
         (item.category, item.title)
     ).fetchone()
     now = datetime.utcnow().isoformat()
     if existing:
-        db.execute("UPDATE knowledge SET content=?, updated=? WHERE id=?",
-                   (item.content, now, existing["id"]))
+        db.execute(
+            "UPDATE knowledge SET content=?, updated=? WHERE id=?",
+            (item.content, now, existing["id"])
+        )
     else:
-        db.execute("INSERT INTO knowledge (category, title, content, updated) VALUES (?,?,?,?)",
-                   (item.category, item.title, item.content, now))
+        db.execute(
+            "INSERT INTO knowledge (category, title, content, updated) VALUES (?,?,?,?)",
+            (item.category, item.title, item.content, now)
+        )
     db.commit()
     return {"status": "ok"}
 
 @app.delete("/api/admin/knowledge/{item_id}", dependencies=[Depends(verify_admin)])
-def delete_knowledge(item_id: int, db: sqlite3.Connection = Depends(get_db)):
+def delete_knowledge(
+    item_id: int,
+    db: sqlite3.Connection = Depends(get_db)
+):
     db.execute("DELETE FROM knowledge WHERE id=?", (item_id,))
     db.commit()
     return {"status": "ok"}
 
 @app.get("/api/admin/logs", dependencies=[Depends(verify_admin)])
-def get_logs(limit: int = 100, topic: Optional[str] = None, db: sqlite3.Connection = Depends(get_db)):
+def get_logs(
+    limit: int = 100,
+    topic: Optional[str] = None,
+    db: sqlite3.Connection = Depends(get_db)
+):
     if topic:
         rows = db.execute(
-            "SELECT * FROM logs WHERE topic=? ORDER BY created DESC LIMIT ?", (topic, limit)
+            "SELECT * FROM logs WHERE topic=? ORDER BY created DESC LIMIT ?",
+            (topic, limit)
         ).fetchall()
     else:
         rows = db.execute(
@@ -222,19 +294,28 @@ def get_stats(db: sqlite3.Connection = Depends(get_db)):
         "SELECT topic, COUNT(*) as n FROM logs GROUP BY topic"
     ).fetchall()
     return {
-        "total_questions": total,
-        "today_questions": today,
-        "by_topic": [dict(r) for r in by_topic],
+        "total_questions":  total,
+        "today_questions":  today,
+        "by_topic":         [dict(r) for r in by_topic],
     }
 
 @app.post("/api/admin/quick-questions", dependencies=[Depends(verify_admin)])
-def add_quick(q: QuickQuestion, db: sqlite3.Connection = Depends(get_db)):
-    db.execute("INSERT INTO quick_questions (topic, question) VALUES (?,?)", (q.topic, q.question))
+def add_quick(
+    q: QuickQuestion,
+    db: sqlite3.Connection = Depends(get_db)
+):
+    db.execute(
+        "INSERT INTO quick_questions (topic, question) VALUES (?,?)",
+        (q.topic, q.question)
+    )
     db.commit()
     return {"status": "ok"}
 
 @app.delete("/api/admin/quick-questions/{q_id}", dependencies=[Depends(verify_admin)])
-def delete_quick(q_id: int, db: sqlite3.Connection = Depends(get_db)):
+def delete_quick(
+    q_id: int,
+    db: sqlite3.Connection = Depends(get_db)
+):
     db.execute("DELETE FROM quick_questions WHERE id=?", (q_id,))
     db.commit()
     return {"status": "ok"}

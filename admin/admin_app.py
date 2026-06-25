@@ -79,8 +79,7 @@ if page == "📊 Dashboard":
         else:
             st.info("Nenhuma interação registrada ainda.")
 
-        custo_est = (stats["total_tokens_in"] * 3 + stats["total_tokens_out"] * 15) / 1_000_000
-        st.caption(f"💰 Custo estimado total: ~USD ${custo_est:.4f} (Sonnet 4.6 — $3/$15 por MTok)")
+        custo_est = 0  # Gemini gratuito — sem custo de tokens
 
 # ── PÁGINA: Base de Conhecimento ──────────────────────────────
 elif page == "📝 Base de Conhecimento":

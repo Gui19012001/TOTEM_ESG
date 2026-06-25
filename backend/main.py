@@ -30,7 +30,7 @@ SUPABASE_KEY  = os.environ.get("SUPABASE_KEY", "")
 
 GEMINI_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/"
-    f"gemini-2.5-flash:generateContent?key={GEMINI_KEY}"
+    f"gemini-1.5-flash:generateContent?key={GEMINI_KEY}"
 )
 
 # ── Headers Supabase ──────────────────────────────────────────

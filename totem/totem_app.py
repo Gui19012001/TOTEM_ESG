@@ -1,6 +1,7 @@
 """
 Totem ESG — Ibero Group
-v3.0 — Tela de boas-vindas com nome, teclado virtual touch, fix tokens/timeout
+Visual: Clean branco corporativo, teclado virtual proprio
+v4.0 — Sem teclado nativo Android, sem empurrar tela
 """
 
 import os
@@ -21,7 +22,6 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.label import Label
 from kivy.uix.button import Button
-from kivy.uix.textinput import TextInput
 from kivy.uix.widget import Widget
 from kivy.uix.screenmanager import ScreenManager, Screen, FadeTransition
 from kivy.graphics import Color, Rectangle, RoundedRectangle, Ellipse, Line
@@ -32,54 +32,46 @@ from kivy.utils import get_color_from_hex
 API_URL   = os.environ.get("API_URL", "https://totem-esg.onrender.com")
 TABLET_ID = os.environ.get("TABLET_ID", "totem-ibero-01")
 
-# ── Paleta Ibero Group ────────────────────────────────────────
-C_NAVY       = get_color_from_hex("#0A1628")
-C_NAVY_MID   = get_color_from_hex("#0D2144")
-C_NAVY_LIGHT = get_color_from_hex("#1A3A6B")
+# ── Paleta clean branco + azul Ibero ─────────────────────────
+C_WHITE      = get_color_from_hex("#FFFFFF")
+C_BG         = get_color_from_hex("#F0F2F7")
 C_BLUE       = get_color_from_hex("#1565C0")
 C_BLUE_LIGHT = get_color_from_hex("#1E88E5")
-C_NEON       = get_color_from_hex("#00E5FF")
-C_GLOW       = get_color_from_hex("#90CAF9")
-C_WHITE      = get_color_from_hex("#FFFFFF")
-C_WHITE_70   = get_color_from_hex("#B0C4DE")
-C_WHITE_40   = get_color_from_hex("#607D9E")
-C_GREEN      = get_color_from_hex("#00C853")
-C_RED        = get_color_from_hex("#FF5252")
-C_BORDER     = get_color_from_hex("#1E3A5F")
+C_BLUE_PALE  = get_color_from_hex("#EBF1FF")
+C_BLUE_MUTED = get_color_from_hex("#C8D8F8")
+C_DARK       = get_color_from_hex("#1A2340")
+C_GRAY       = get_color_from_hex("#4A5568")
+C_GRAY_LIGHT = get_color_from_hex("#A0AABB")
+C_BORDER     = get_color_from_hex("#E4E8F0")
+C_BORDER_MED = get_color_from_hex("#D0D5E8")
+C_KEY_BG     = get_color_from_hex("#EAECF4")
+C_GREEN      = get_color_from_hex("#2E7D32")
+C_RED        = get_color_from_hex("#E53935")
 
 TOPICS = {
-    "ambiental": {"label": "Ambiental", "code": "AMB",
-                  "color": get_color_from_hex("#00BFA5"),
-                  "qs": ["Qual e a meta de reducao de CO2?",
-                         "Como esta o consumo de agua?",
+    "ambiental": {"label": "Ambiental", "code": "AMB", "color": get_color_from_hex("#00897B"),
+                  "qs": ["Qual e a meta de reducao de CO2?", "Como esta o consumo de agua?",
                          "Quanto residuo reciclamos?"]},
-    "seguranca": {"label": "Seguranca", "code": "SST",
-                  "color": get_color_from_hex("#FF6F00"),
-                  "qs": ["Quantos dias sem acidentes?",
-                         "Quais EPIs devo usar?",
+    "seguranca": {"label": "Seguranca",  "code": "SST", "color": get_color_from_hex("#F57C00"),
+                  "qs": ["Quantos dias sem acidentes?", "Quais EPIs devo usar?",
                          "O que fazer em emergencia?"]},
-    "social":    {"label": "Social",    "code": "SOC",
-                  "color": get_color_from_hex("#7B1FA2"),
-                  "qs": ["Quais programas sociais temos?",
-                         "Como participar de treinamentos?",
+    "social":    {"label": "Social",     "code": "SOC", "color": get_color_from_hex("#7B1FA2"),
+                  "qs": ["Quais programas sociais temos?", "Como participar de treinamentos?",
                          "Quais sao as metas sociais?"]},
-    "politicas": {"label": "Politicas", "code": "POL",
-                  "color": C_BLUE_LIGHT,
-                  "qs": ["O que diz a politica integrada?",
-                         "Quais sao nossas certificacoes?",
+    "politicas": {"label": "Politicas",  "code": "POL", "color": C_BLUE,
+                  "qs": ["O que diz a politica integrada?", "Quais sao nossas certificacoes?",
                          "Como reportar um problema?"]},
 }
 
-# ── Limpa markdown ────────────────────────────────────────────
 def clean_md(text):
     text = re.sub(r'\*\*(.+?)\*\*', r'\1', text)
-    text = re.sub(r'\*(.+?)\*', r'\1', text)
-    text = re.sub(r'#{1,6}\s*', '', text)
-    text = re.sub(r'^\s*[\*\-]\s+', '- ', text, flags=re.MULTILINE)
+    text = re.sub(r'\*(.+?)\*',     r'\1', text)
+    text = re.sub(r'#{1,6}\s*',     '',    text)
+    text = re.sub(r'^\s*[\*\-]\s+', '- ',  text, flags=re.MULTILINE)
     text = re.sub(r'\n{3,}', '\n\n', text)
     return text.strip()
 
-# ── Helpers ───────────────────────────────────────────────────
+# ── Helpers canvas ────────────────────────────────────────────
 def draw_bg(w, color, radius=0):
     w.canvas.before.clear()
     with w.canvas.before:
@@ -94,14 +86,14 @@ def bind_bg(w, color, radius=0):
            size=lambda s, v: draw_bg(s, color, radius))
     draw_bg(w, color, radius)
 
-# ── Botão corporativo ─────────────────────────────────────────
-class CBtn(Button):
-    def __init__(self, bg=None, fg=None, r=10, border=None, **kw):
+# ── Botão base ────────────────────────────────────────────────
+class Btn(Button):
+    def __init__(self, bg=None, fg=None, r=8, border_color=None, **kw):
         super().__init__(**kw)
-        self._bg = bg or C_BLUE
-        self._fg = fg or C_WHITE
-        self._r  = r
-        self._border = border
+        self._bg     = bg or C_BLUE
+        self._fg     = fg or C_WHITE
+        self._r      = r
+        self._border = border_color
         self.background_color = (0, 0, 0, 0)
         self.color = self._fg
         self.bind(pos=self._draw, size=self._draw)
@@ -111,66 +103,61 @@ class CBtn(Button):
         with self.canvas.before:
             if self._border:
                 Color(*self._border)
-                RoundedRectangle(pos=self.pos, size=self.size,
-                                 radius=[dp(self._r)])
+                RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(self._r)])
                 Color(*self._bg)
                 RoundedRectangle(
                     pos=(self.x+dp(1), self.y+dp(1)),
-                    size=(max(self.width-dp(2),1), max(self.height-dp(2),1)),
-                    radius=[dp(max(self._r-1,1))])
+                    size=(max(self.width-dp(2), 1), max(self.height-dp(2), 1)),
+                    radius=[dp(max(self._r-1, 1))])
             else:
                 Color(*self._bg)
-                RoundedRectangle(pos=self.pos, size=self.size,
-                                 radius=[dp(self._r)])
+                RoundedRectangle(pos=self.pos, size=self.size, radius=[dp(self._r)])
 
 # ── Bolha de mensagem ─────────────────────────────────────────
 class Bubble(BoxLayout):
-    def __init__(self, text, is_user=False, name="OP", **kw):
+    def __init__(self, text, is_user=False, initials="OP", **kw):
         super().__init__(orientation="vertical",
                          size_hint_y=None, padding=[dp(4), dp(2)], **kw)
         self.is_user = is_user
-        row = BoxLayout(size_hint_y=None, spacing=dp(10))
+        row = BoxLayout(size_hint_y=None, spacing=dp(8))
 
-        av_color = C_BLUE if is_user else C_NEON
-        av_text  = name[:2].upper() if is_user else "IB"
-        av = Label(text=av_text, font_size=sp(10), bold=True,
-                   color=C_NAVY if not is_user else C_WHITE,
-                   size_hint=(None, None), size=(dp(34), dp(34)))
+        av_bg  = C_BLUE if is_user else C_BLUE
+        av_txt = initials[:2].upper() if is_user else "IB"
+        av = Label(text=av_txt, font_size=sp(10), bold=True, color=C_WHITE,
+                   size_hint=(None, None), size=(dp(32), dp(32)))
         with av.canvas.before:
-            Color(*av_color)
+            Color(*av_bg)
             Ellipse(pos=av.pos, size=av.size)
-        av.bind(pos=lambda w, v, c=av_color: self._draw_av(w, c),
-                size=lambda w, v, c=av_color: self._draw_av(w, c))
+        av.bind(pos=lambda w, v, c=av_bg: self._draw_av(w, c),
+                size=lambda w, v, c=av_bg: self._draw_av(w, c))
 
-        lbl = Label(text=text, font_size=sp(14),
-                    color=C_WHITE,
-                    halign="left", valign="top",
-                    text_size=(Window.width * 0.56, None))
+        lbl = Label(
+            text=text, font_size=sp(14),
+            color=C_WHITE if is_user else C_DARK,
+            halign="left", valign="top",
+            text_size=(Window.width * 0.55, None),
+        )
         lbl.bind(texture_size=lbl.setter("size"))
 
-        bc = C_BLUE if is_user else C_NAVY_LIGHT
-        brd = C_NEON if is_user else C_BORDER
-        r_u = [dp(14), dp(4), dp(14), dp(14)]
-        r_b = [dp(4), dp(14), dp(14), dp(14)]
-        radius = r_u if is_user else r_b
+        bc  = C_BLUE if is_user else C_WHITE
+        brd = C_BLUE_MUTED if is_user else C_BORDER
+        rad = [dp(12), dp(4), dp(12), dp(12)] if is_user else [dp(4), dp(12), dp(12), dp(12)]
 
-        bubble = BoxLayout(size_hint=(None, None), padding=[dp(14), dp(10)])
+        bubble = BoxLayout(size_hint=(None, None), padding=[dp(12), dp(10)])
         lbl.bind(size=lambda w, v: self._upd(bubble, w))
         bubble.add_widget(lbl)
 
         with bubble.canvas.before:
             Color(*brd)
-            RoundedRectangle(pos=bubble.pos, size=bubble.size, radius=radius)
+            RoundedRectangle(pos=bubble.pos, size=bubble.size, radius=rad)
             Color(*bc)
             RoundedRectangle(
                 pos=(bubble.x+dp(1), bubble.y+dp(1)),
-                size=(max(bubble.width-dp(2),1), max(bubble.height-dp(2),1)),
-                radius=radius)
+                size=(max(bubble.width-dp(2), 1), max(bubble.height-dp(2), 1)),
+                radius=rad)
         bubble.bind(
-            pos=lambda w, v, b=bc, d=brd, rad=radius:
-                self._draw_bubble(w, b, d, rad),
-            size=lambda w, v, b=bc, d=brd, rad=radius:
-                self._draw_bubble(w, b, d, rad))
+            pos=lambda w, v, b=bc, d=brd, r=rad: self._draw_bubble(w, b, d, r),
+            size=lambda w, v, b=bc, d=brd, r=rad: self._draw_bubble(w, b, d, r))
 
         if is_user:
             row.add_widget(Widget())
@@ -193,86 +180,106 @@ class Bubble(BoxLayout):
             Color(*c); Ellipse(pos=w.pos, size=w.size)
 
     def _upd(self, bubble, lbl):
-        bubble.width  = min(lbl.width+dp(28), Window.width*0.62)
-        bubble.height = lbl.height+dp(20)
-        self._row.height = bubble.height+dp(8)
-        self.height = self._row.height+dp(4)
+        bubble.width  = min(lbl.width + dp(24), Window.width * 0.62)
+        bubble.height = lbl.height + dp(20)
+        self._row.height = bubble.height + dp(8)
+        self.height = self._row.height + dp(4)
 
-    def _draw_bubble(self, w, bc, brd, radius):
+    def _draw_bubble(self, w, bc, brd, rad):
         w.canvas.before.clear()
         with w.canvas.before:
             Color(*brd)
-            RoundedRectangle(pos=w.pos, size=w.size, radius=radius)
+            RoundedRectangle(pos=w.pos, size=w.size, radius=rad)
             Color(*bc)
             RoundedRectangle(
                 pos=(w.x+dp(1), w.y+dp(1)),
-                size=(max(w.width-dp(2),1), max(w.height-dp(2),1)),
-                radius=radius)
+                size=(max(w.width-dp(2), 1), max(w.height-dp(2), 1)),
+                radius=rad)
 
 
 # ════════════════════════════════════════════════════════════
-#  TELA 1 — BOAS-VINDAS (pede o nome)
+#  TELA 1 — BOAS-VINDAS
 # ════════════════════════════════════════════════════════════
 class WelcomeScreen(Screen):
     def __init__(self, **kw):
         super().__init__(**kw)
+        self._typed = ""
         self._build()
 
     def _build(self):
         root = BoxLayout(orientation="vertical")
-        bind_bg(root, C_NAVY)
+        bind_bg(root, C_BG)
 
-        # Header
-        header = BoxLayout(size_hint_y=None, height=dp(52),
-                           padding=[dp(20), 0])
-        bind_bg(header, C_NAVY_MID)
-        header.add_widget(Label(
-            text="Ibero Group  |  Totem ESG",
-            font_size=sp(15), bold=True, color=C_WHITE, halign="left"))
-        status = Label(text="● Agente Online", font_size=sp(12),
-                       color=C_GREEN, size_hint_x=None, width=dp(120))
-        header.add_widget(status)
-        root.add_widget(header)
+        # Header azul
+        hdr = BoxLayout(size_hint_y=None, height=dp(52),
+                        padding=[dp(18), 0], spacing=dp(12))
+        bind_bg(hdr, C_BLUE)
 
-        # Linha neon
-        line = Widget(size_hint_y=None, height=dp(2))
-        bind_bg(line, C_NEON)
-        root.add_widget(line)
+        logo_box = BoxLayout(size_hint=(None, None), size=(dp(34), dp(34)))
+        with logo_box.canvas:
+            Color(*C_WHITE)
+            RoundedRectangle(pos=logo_box.pos, size=logo_box.size, radius=[dp(8)])
+        logo_box.bind(pos=lambda w, v: self._redraw_logo(w),
+                      size=lambda w, v: self._redraw_logo(w))
+        logo_box.add_widget(Label(text="IB", font_size=sp(12), bold=True,
+                                  color=C_BLUE,
+                                  size_hint=(None, None), size=(dp(34), dp(34))))
 
-        # Centro
-        center = BoxLayout(orientation="vertical", padding=dp(30),
-                           spacing=dp(20))
-        bind_bg(center, C_NAVY)
+        hdr_titles = BoxLayout(orientation="vertical", spacing=dp(1))
+        hdr_titles.add_widget(Label(text="Ibero Group", font_size=sp(13), bold=True,
+                                    color=C_WHITE, halign="left",
+                                    size_hint_y=None, height=dp(22)))
+        hdr_titles.add_widget(Label(text="Totem ESG", font_size=sp(10),
+                                    color=get_color_from_hex("#BBDEFB"),
+                                    halign="left", size_hint_y=None, height=dp(16)))
+        hdr.add_widget(logo_box)
+        hdr.add_widget(hdr_titles)
+        hdr.add_widget(Widget())
+
+        status_row = BoxLayout(size_hint=(None, None), size=(dp(80), dp(24)),
+                               spacing=dp(4), padding=[dp(8), dp(4)])
+        bind_bg(status_row, get_color_from_hex("#1976D2"), radius=12)
+        st_dot = Widget(size_hint=(None, None), size=(dp(7), dp(7)))
+        with st_dot.canvas:
+            Color(*C_GREEN)
+            Ellipse(pos=st_dot.pos, size=st_dot.size)
+        st_dot.bind(pos=lambda w, v: self._redraw_dot(w),
+                    size=lambda w, v: self._redraw_dot(w))
+        status_row.add_widget(st_dot)
+        status_row.add_widget(Label(text="Online", font_size=sp(11),
+                                    color=C_WHITE))
+        hdr.add_widget(status_row)
+        root.add_widget(hdr)
+
+        # Centro — card de boas-vindas
+        center = BoxLayout(orientation="vertical", padding=dp(24), spacing=dp(16))
+        bind_bg(center, C_BG)
 
         center.add_widget(Widget())
 
         # Card principal
-        card = BoxLayout(orientation="vertical",
-                         size_hint_y=None, height=dp(380),
-                         padding=[dp(32), dp(28)], spacing=dp(16))
+        card = BoxLayout(orientation="vertical", size_hint_y=None,
+                         padding=[dp(28), dp(22)], spacing=dp(14))
         with card.canvas.before:
-            Color(*C_NAVY_LIGHT)
-            RoundedRectangle(pos=card.pos, size=card.size, radius=[dp(20)])
-            Color(*C_NEON)
-            Line(rounded_rectangle=(card.x, card.y,
-                                    card.width, card.height, dp(20)),
-                 width=dp(1.2))
-        card.bind(pos=lambda w, v: self._draw_card(w),
-                  size=lambda w, v: self._draw_card(w))
+            Color(*C_WHITE)
+            RoundedRectangle(pos=card.pos, size=card.size, radius=[dp(18)])
+            Color(*C_BORDER_MED)
+            Line(rounded_rectangle=(card.x, card.y, card.width, card.height, dp(18)),
+                 width=dp(1))
+        card.bind(pos=lambda w, v: self._redraw_card(w),
+                  size=lambda w, v: self._redraw_card(w))
 
         # Ícone IB
-        icon_row = BoxLayout(size_hint_y=None, height=dp(72))
-        icon_box = BoxLayout(size_hint=(None, None), size=(dp(72), dp(72)))
+        icon_row = BoxLayout(size_hint_y=None, height=dp(60))
+        icon_box = BoxLayout(size_hint=(None, None), size=(dp(56), dp(56)))
         with icon_box.canvas:
             Color(*C_BLUE)
-            RoundedRectangle(pos=icon_box.pos, size=icon_box.size,
-                             radius=[dp(18)])
-        icon_box.bind(pos=lambda w, v: self._draw_icon(w),
-                      size=lambda w, v: self._draw_icon(w))
-        icon_lbl = Label(text="IB", font_size=sp(24), bold=True,
-                         color=C_NEON,
-                         size_hint=(None, None), size=(dp(72), dp(72)))
-        icon_box.add_widget(icon_lbl)
+            RoundedRectangle(pos=icon_box.pos, size=icon_box.size, radius=[dp(14)])
+        icon_box.bind(pos=lambda w, v: self._redraw_icon(w),
+                      size=lambda w, v: self._redraw_icon(w))
+        icon_box.add_widget(Label(text="IB", font_size=sp(20), bold=True,
+                                  color=C_WHITE,
+                                  size_hint=(None, None), size=(dp(56), dp(56))))
         icon_row.add_widget(Widget())
         icon_row.add_widget(icon_box)
         icon_row.add_widget(Widget())
@@ -280,113 +287,152 @@ class WelcomeScreen(Screen):
 
         card.add_widget(Label(
             text="Ola! Sou o Agente ESG",
-            font_size=sp(22), bold=True, color=C_WHITE,
-            halign="center", size_hint_y=None, height=dp(36)))
+            font_size=sp(20), bold=True, color=C_DARK,
+            halign="center", size_hint_y=None, height=dp(32)))
         card.add_widget(Label(
             text="da Ibero Group",
-            font_size=sp(16), color=C_NEON,
-            halign="center", size_hint_y=None, height=dp(26)))
+            font_size=sp(14), color=C_BLUE,
+            halign="center", size_hint_y=None, height=dp(22)))
         card.add_widget(Label(
             text="Como voce se chama?",
-            font_size=sp(14), color=C_WHITE_70,
-            halign="center", size_hint_y=None, height=dp(24)))
+            font_size=sp(14), color=C_GRAY,
+            halign="center", size_hint_y=None, height=dp(22)))
 
-        # Campo nome
-        self.name_input = TextInput(
-            hint_text="Digite seu nome aqui...",
+        # Display do nome
+        self.name_disp = Label(
+            text="Digite seu nome...",
             font_size=sp(16),
-            multiline=False,
-            background_color=C_NAVY_MID,
-            foreground_color=C_WHITE,
-            cursor_color=C_NEON,
-            hint_text_color=C_WHITE_40,
-            padding=[dp(16), dp(14)],
-            size_hint_y=None, height=dp(50),
+            color=C_GRAY_LIGHT,
+            halign="left", valign="middle",
+            size_hint_y=None, height=dp(46),
         )
-        self.name_input.bind(on_text_validate=self._confirm)
-        card.add_widget(self.name_input)
+        name_box = BoxLayout(size_hint_y=None, height=dp(46),
+                             padding=[dp(14), dp(8)])
+        with name_box.canvas.before:
+            Color(*C_BLUE_PALE)
+            RoundedRectangle(pos=name_box.pos, size=name_box.size, radius=[dp(10)])
+            Color(*C_BLUE_MUTED)
+            Line(rounded_rectangle=(name_box.x, name_box.y,
+                                    name_box.width, name_box.height, dp(10)),
+                 width=dp(1.5))
+        name_box.bind(pos=lambda w, v: self._redraw_name_box(w),
+                      size=lambda w, v: self._redraw_name_box(w))
+        name_box.add_widget(self.name_disp)
+        card.add_widget(name_box)
 
-        # Botão confirmar
-        btn = CBtn(
+        # Botão entrar
+        enter_btn = Btn(
             text="Entrar no Agente ESG",
             bg=C_BLUE, fg=C_WHITE,
             font_size=sp(15), bold=True,
-            size_hint_y=None, height=dp(50), r=12,
-            border=C_NEON,
+            size_hint_y=None, height=dp(48), r=10,
         )
-        btn.bind(on_press=self._confirm)
-        card.add_widget(btn)
-
+        enter_btn.bind(on_press=self._confirm)
+        card.add_widget(enter_btn)
+        card.bind(minimum_height=card.setter("height"))
         center.add_widget(card)
-        center.add_widget(Widget())
 
         # Teclado virtual
         kb = self._build_keyboard()
         center.add_widget(kb)
-
+        center.add_widget(Widget())
         root.add_widget(center)
         self.add_widget(root)
 
-    def _draw_card(self, w):
+    def _redraw_logo(self, w):
+        w.canvas.clear()
+        with w.canvas:
+            Color(*C_WHITE)
+            RoundedRectangle(pos=w.pos, size=w.size, radius=[dp(8)])
+
+    def _redraw_dot(self, w):
+        w.canvas.clear()
+        with w.canvas:
+            Color(*C_GREEN); Ellipse(pos=w.pos, size=w.size)
+
+    def _redraw_card(self, w):
         w.canvas.before.clear()
         with w.canvas.before:
-            Color(*C_NAVY_LIGHT)
-            RoundedRectangle(pos=w.pos, size=w.size, radius=[dp(20)])
-            Color(*C_NEON)
-            Line(rounded_rectangle=(w.x, w.y, w.width, w.height, dp(20)),
-                 width=dp(1.2))
+            Color(*C_WHITE)
+            RoundedRectangle(pos=w.pos, size=w.size, radius=[dp(18)])
+            Color(*C_BORDER_MED)
+            Line(rounded_rectangle=(w.x, w.y, w.width, w.height, dp(18)),
+                 width=dp(1))
 
-    def _draw_icon(self, w):
+    def _redraw_icon(self, w):
         w.canvas.clear()
         with w.canvas:
             Color(*C_BLUE)
-            RoundedRectangle(pos=w.pos, size=w.size, radius=[dp(18)])
+            RoundedRectangle(pos=w.pos, size=w.size, radius=[dp(14)])
+
+    def _redraw_name_box(self, w):
+        w.canvas.before.clear()
+        with w.canvas.before:
+            Color(*C_BLUE_PALE)
+            RoundedRectangle(pos=w.pos, size=w.size, radius=[dp(10)])
+            Color(*C_BLUE_MUTED)
+            Line(rounded_rectangle=(w.x, w.y, w.width, w.height, dp(10)),
+                 width=dp(1.5))
 
     def _build_keyboard(self):
         rows = [
             list("QWERTYUIOP"),
             list("ASDFGHJKL"),
             list("ZXCVBNM"),
-            ["APAGAR", "ESPACO", "CONFIRMAR"],
         ]
         kb = BoxLayout(orientation="vertical",
-                       size_hint_y=None, height=dp(180), spacing=dp(4))
+                       size_hint_y=None, height=dp(178), spacing=dp(4))
         for row in rows:
             rbox = BoxLayout(spacing=dp(4), size_hint_y=None, height=dp(40))
-            for key in row:
-                if key == "APAGAR":
-                    btn = CBtn(text="<", bg=C_NAVY_MID, fg=C_WHITE_70,
-                               font_size=sp(14), r=7, border=C_BORDER)
-                    btn.bind(on_press=lambda b: self._kb("APAGAR"))
-                elif key == "ESPACO":
-                    btn = CBtn(text="_", bg=C_NAVY_MID, fg=C_WHITE_70,
-                               font_size=sp(14), r=7, border=C_BORDER)
-                    btn.bind(on_press=lambda b: self._kb(" "))
-                elif key == "CONFIRMAR":
-                    btn = CBtn(text="OK", bg=C_BLUE, fg=C_WHITE,
-                               font_size=sp(14), bold=True, r=7, border=C_NEON)
-                    btn.bind(on_press=self._confirm)
-                else:
-                    btn = CBtn(text=key, bg=C_NAVY_LIGHT, fg=C_WHITE,
-                               font_size=sp(14), r=7, border=C_BORDER)
-                    btn.bind(on_press=lambda b, k=key: self._kb(k))
+            for k in row:
+                btn = Btn(text=k, bg=C_KEY_BG, fg=C_DARK,
+                          font_size=sp(14), bold=True, r=7,
+                          border_color=C_BORDER_MED)
+                btn.bind(on_press=lambda b, k=k: self._type(k))
                 rbox.add_widget(btn)
             kb.add_widget(rbox)
+
+        # Linha especial
+        spec = BoxLayout(spacing=dp(4), size_hint_y=None, height=dp(40))
+        del_btn = Btn(text="< Del", bg=C_KEY_BG, fg=C_RED,
+                      font_size=sp(13), bold=True, r=7,
+                      border_color=C_BORDER_MED)
+        del_btn.bind(on_press=lambda b: self._type("DEL"))
+
+        spc_btn = Btn(text="Espaco", bg=C_KEY_BG, fg=C_GRAY,
+                      font_size=sp(13), r=7,
+                      border_color=C_BORDER_MED)
+        spc_btn.bind(on_press=lambda b: self._type(" "))
+
+        ok_btn = Btn(text="OK  >", bg=C_BLUE, fg=C_WHITE,
+                     font_size=sp(14), bold=True, r=7)
+        ok_btn.bind(on_press=self._confirm)
+
+        spec.add_widget(del_btn)
+        spec.add_widget(spc_btn)
+        spec.add_widget(ok_btn)
+        kb.add_widget(spec)
         return kb
 
-    def _kb(self, key):
-        if key == "APAGAR":
-            self.name_input.text = self.name_input.text[:-1]
+    def _type(self, k):
+        if k == "DEL":
+            self._typed = self._typed[:-1]
         else:
-            if len(self.name_input.text) < 20:
-                self.name_input.text += key
+            if len(self._typed) < 18:
+                self._typed += k
+        self._update_display()
+
+    def _update_display(self):
+        if self._typed:
+            self.name_disp.text  = self._typed
+            self.name_disp.color = C_DARK
+        else:
+            self.name_disp.text  = "Digite seu nome..."
+            self.name_disp.color = C_GRAY_LIGHT
 
     def _confirm(self, *_):
-        name = self.name_input.text.strip().title()
-        if not name:
-            name = "Operador"
-        app = App.get_running_app()
-        app.operator_name = name
+        name = self._typed.strip().title() or "Operador"
+        App.get_running_app().operator_name = name
         self.manager.current = "chat"
 
 
@@ -416,54 +462,65 @@ class ChatScreen(Screen):
         name = getattr(app, "operator_name", "Operador")
 
         root = BoxLayout(orientation="horizontal")
-        bind_bg(root, C_NAVY)
+        bind_bg(root, C_BG)
 
         # ── Sidebar ──────────────────────────────────────────
-        sidebar = BoxLayout(
-            orientation="vertical",
-            size_hint_x=None, width=dp(195),
-            padding=[dp(12), dp(16), dp(12), dp(12)],
-            spacing=dp(6),
-        )
-        bind_bg(sidebar, C_NAVY_MID)
+        sidebar = BoxLayout(orientation="vertical",
+                            size_hint_x=None, width=dp(185),
+                            padding=[dp(12), dp(14), dp(12), dp(12)],
+                            spacing=dp(4))
+        bind_bg(sidebar, C_WHITE)
 
-        logo_row = BoxLayout(size_hint_y=None, height=dp(52), spacing=dp(10))
-        badge = BoxLayout(size_hint=(None, None), size=(dp(40), dp(40)))
-        with badge.canvas:
+        # Borda direita da sidebar
+        with sidebar.canvas.after:
+            Color(*C_BORDER)
+            self._sb_line = Rectangle(
+                pos=(sidebar.right-dp(1), sidebar.y),
+                size=(dp(1), sidebar.height))
+        sidebar.bind(
+            pos=lambda w, v: setattr(self._sb_line, "pos",
+                                     (w.right-dp(1), w.y)),
+            size=lambda w, v: setattr(self._sb_line, "size",
+                                      (dp(1), v[1])))
+
+        # Logo
+        logo_row = BoxLayout(size_hint_y=None, height=dp(48), spacing=dp(10))
+        logo_b = BoxLayout(size_hint=(None, None), size=(dp(36), dp(36)))
+        with logo_b.canvas:
             Color(*C_BLUE)
-            RoundedRectangle(pos=badge.pos, size=badge.size, radius=[dp(10)])
-        badge.bind(pos=lambda w, v: self._draw_badge(w),
-                   size=lambda w, v: self._draw_badge(w))
-        badge.add_widget(Label(text="IB", font_size=sp(14), bold=True,
-                               color=C_NEON,
-                               size_hint=(None, None), size=(dp(40), dp(40))))
-        title_col = BoxLayout(orientation="vertical", spacing=dp(1))
-        title_col.add_widget(Label(
-            text="Ibero Group", font_size=sp(12), bold=True,
-            color=C_WHITE, halign="left", size_hint_y=None, height=dp(20)))
-        title_col.add_widget(Label(
-            text="Totem ESG", font_size=sp(10),
-            color=C_NEON, halign="left", size_hint_y=None, height=dp(16)))
-        logo_row.add_widget(badge)
-        logo_row.add_widget(title_col)
+            RoundedRectangle(pos=logo_b.pos, size=logo_b.size, radius=[dp(9)])
+        logo_b.bind(pos=lambda w, v: self._redraw_lb(w),
+                    size=lambda w, v: self._redraw_lb(w))
+        logo_b.add_widget(Label(text="IB", font_size=sp(13), bold=True,
+                                color=C_WHITE,
+                                size_hint=(None, None), size=(dp(36), dp(36))))
+        tc = BoxLayout(orientation="vertical", spacing=dp(1))
+        tc.add_widget(Label(text="Ibero Group", font_size=sp(12), bold=True,
+                            color=C_DARK, halign="left",
+                            size_hint_y=None, height=dp(20)))
+        tc.add_widget(Label(text="Totem ESG", font_size=sp(10),
+                            color=C_BLUE, halign="left",
+                            size_hint_y=None, height=dp(16)))
+        logo_row.add_widget(logo_b)
+        logo_row.add_widget(tc)
         sidebar.add_widget(logo_row)
 
+        # Divisor
         div = Widget(size_hint_y=None, height=dp(1))
-        bind_bg(div, C_NEON)
+        bind_bg(div, C_BORDER)
         sidebar.add_widget(div)
         sidebar.add_widget(Widget(size_hint_y=None, height=dp(4)))
 
-        # Saudação personalizada
+        # Saudação
         self.greet_lbl = Label(
             text=f"Ola, {name}!",
-            font_size=sp(13), bold=True, color=C_NEON,
-            halign="left", size_hint_y=None, height=dp(24))
+            font_size=sp(12), bold=True, color=C_BLUE,
+            halign="left", size_hint_y=None, height=dp(22))
         sidebar.add_widget(self.greet_lbl)
-        sidebar.add_widget(Widget(size_hint_y=None, height=dp(4)))
 
         sidebar.add_widget(Label(
             text="TEMAS", font_size=sp(9), bold=True,
-            color=C_WHITE_40, halign="left",
+            color=C_GRAY_LIGHT, halign="left",
             size_hint_y=None, height=dp(18)))
 
         self.topic_btns = {}
@@ -478,44 +535,59 @@ class ChatScreen(Screen):
         bind_bg(div2, C_BORDER)
         sidebar.add_widget(div2)
 
-        exit_btn = CBtn(
-            text="Sair / Trocar",
-            bg=C_NAVY_LIGHT, fg=C_WHITE_40,
-            font_size=sp(11), r=8, border=C_BORDER,
-            size_hint_y=None, height=dp(38),
-        )
+        exit_btn = Btn(
+            text="Sair",
+            bg=C_BG, fg=C_GRAY_LIGHT,
+            font_size=sp(12), r=8,
+            border_color=C_BORDER,
+            size_hint_y=None, height=dp(38))
         exit_btn.bind(on_press=self._exit)
         sidebar.add_widget(exit_btn)
         sidebar.add_widget(Widget(size_hint_y=None, height=dp(6)))
-
         root.add_widget(sidebar)
 
-        # ── Chat ─────────────────────────────────────────────
+        # ── Área de chat ──────────────────────────────────────
         right = BoxLayout(orientation="vertical")
-        bind_bg(right, C_NAVY)
+        bind_bg(right, C_BG)
 
-        header = BoxLayout(size_hint_y=None, height=dp(52),
-                           padding=[dp(18), 0], spacing=dp(10))
-        bind_bg(header, C_NAVY_MID)
+        # Sub-header
+        sub = BoxLayout(size_hint_y=None, height=dp(48),
+                        padding=[dp(16), 0], spacing=dp(10))
+        bind_bg(sub, C_WHITE)
+
+        # Barra azul acento
+        acc = Widget(size_hint=(None, None), size=(dp(3), dp(32)))
+        bind_bg(acc, C_BLUE, radius=2)
+
         self.header_lbl = Label(
             text="Agente ESG  —  Ambiental",
-            font_size=sp(15), bold=True, color=C_WHITE, halign="left")
-        header.add_widget(self.header_lbl)
-        st_box = BoxLayout(size_hint=(None, None), size=(dp(88), dp(26)),
-                           padding=[dp(8), dp(4)])
-        bind_bg(st_box, C_NAVY_LIGHT, radius=13)
-        self.st_dot = Label(text="●", font_size=sp(10), color=C_GREEN,
-                            size_hint=(None, None), size=(dp(16), dp(26)))
+            font_size=sp(14), bold=True,
+            color=C_DARK, halign="left")
+        sub.add_widget(acc)
+        sub.add_widget(self.header_lbl)
+
+        # Status
+        st_box = BoxLayout(size_hint=(None, None), size=(dp(72), dp(24)),
+                           spacing=dp(4), padding=[dp(8), dp(4)])
+        bind_bg(st_box, C_BG, radius=12)
+        self.st_dot = Widget(size_hint=(None, None), size=(dp(7), dp(7)))
+        with self.st_dot.canvas:
+            Color(*C_GREEN); Ellipse(pos=self.st_dot.pos, size=self.st_dot.size)
+        self.st_dot.bind(
+            pos=lambda w, v: self._draw_dot(w, C_GREEN),
+            size=lambda w, v: self._draw_dot(w, C_GREEN))
         self.st_lbl = Label(text="Online", font_size=sp(11), color=C_GREEN)
         st_box.add_widget(self.st_dot)
         st_box.add_widget(self.st_lbl)
-        header.add_widget(st_box)
-        right.add_widget(header)
+        sub.add_widget(st_box)
+        right.add_widget(sub)
 
-        neon = Widget(size_hint_y=None, height=dp(2))
-        bind_bg(neon, C_NEON)
-        right.add_widget(neon)
+        # Linha separadora
+        sep = Widget(size_hint_y=None, height=dp(1))
+        bind_bg(sep, C_BORDER)
+        right.add_widget(sep)
 
+        # Scroll chat
         self.scroll = ScrollView(do_scroll_x=False)
         self.msg_box = BoxLayout(
             orientation="vertical", size_hint_y=None,
@@ -524,28 +596,35 @@ class ChatScreen(Screen):
         self.scroll.add_widget(self.msg_box)
         right.add_widget(self.scroll)
 
-        neon2 = Widget(size_hint_y=None, height=dp(1))
-        bind_bg(neon2, C_BORDER)
-        right.add_widget(neon2)
+        # Linha input
+        inp_sep = Widget(size_hint_y=None, height=dp(1))
+        bind_bg(inp_sep, C_BORDER)
+        right.add_widget(inp_sep)
 
-        inp_bar = BoxLayout(size_hint_y=None, height=dp(64),
+        # Barra de input
+        inp_bar = BoxLayout(size_hint_y=None, height=dp(62),
                             padding=[dp(12), dp(10)], spacing=dp(10))
-        bind_bg(inp_bar, C_NAVY_MID)
+        bind_bg(inp_bar, C_WHITE)
+
+        from kivy.uix.textinput import TextInput
         self.txt = TextInput(
-            hint_text=f"Olá {name}, o que deseja saber?",
+            hint_text=f"Ola {name}, o que deseja saber?",
             font_size=sp(14), multiline=False,
-            background_color=C_NAVY_LIGHT,
-            foreground_color=C_WHITE,
-            cursor_color=C_NEON,
-            hint_text_color=C_WHITE_40,
+            background_color=C_BG,
+            foreground_color=C_DARK,
+            cursor_color=C_BLUE,
+            hint_text_color=C_GRAY_LIGHT,
             padding=[dp(14), dp(12)],
         )
         self.txt.bind(on_text_validate=self.send_msg)
-        self.send_btn = CBtn(
-            text=">", bg=C_BLUE, fg=C_WHITE,
+
+        self.send_btn = Btn(
+            text=">",
+            bg=C_BLUE, fg=C_WHITE,
             font_size=sp(20), bold=True,
-            size_hint_x=None, width=dp(52), r=10, border=C_NEON)
+            size_hint_x=None, width=dp(50), r=10)
         self.send_btn.bind(on_press=self.send_msg)
+
         inp_bar.add_widget(self.txt)
         inp_bar.add_widget(self.send_btn)
         right.add_widget(inp_bar)
@@ -554,11 +633,16 @@ class ChatScreen(Screen):
         self.add_widget(root)
         self._show_welcome()
 
-    def _draw_badge(self, w):
+    def _redraw_lb(self, w):
         w.canvas.clear()
         with w.canvas:
             Color(*C_BLUE)
-            RoundedRectangle(pos=w.pos, size=w.size, radius=[dp(10)])
+            RoundedRectangle(pos=w.pos, size=w.size, radius=[dp(9)])
+
+    def _draw_dot(self, w, color):
+        w.canvas.clear()
+        with w.canvas:
+            Color(*color); Ellipse(pos=w.pos, size=w.size)
 
     def _restart(self):
         app  = App.get_running_app()
@@ -566,26 +650,27 @@ class ChatScreen(Screen):
         if hasattr(self, "greet_lbl"):
             self.greet_lbl.text = f"Ola, {name}!"
         if hasattr(self, "txt"):
-            self.txt.hint_text = f"Olá {name}, o que deseja saber?"
+            self.txt.hint_text = f"Ola {name}, o que deseja saber?"
         self.history.clear()
         self._show_welcome()
 
     def _make_topic_btn(self, key, meta):
         is_act = (key == "ambiental")
         row = BoxLayout(orientation="horizontal",
-                        size_hint_y=None, height=dp(46),
-                        spacing=dp(8), padding=[dp(8), dp(6)])
-        bg  = C_BLUE if is_act else C_NAVY_LIGHT
-        brd = C_NEON if is_act else C_BORDER
+                        size_hint_y=None, height=dp(44),
+                        spacing=dp(8), padding=[dp(6), dp(6)])
+
+        bg  = C_BLUE_PALE if is_act else C_BG
+        brd = C_BLUE      if is_act else C_BORDER
 
         with row.canvas.before:
             Color(*brd)
-            RoundedRectangle(pos=row.pos, size=row.size, radius=[dp(9)])
+            RoundedRectangle(pos=row.pos, size=row.size, radius=[dp(8)])
             Color(*bg)
             RoundedRectangle(
                 pos=(row.x+dp(1), row.y+dp(1)),
-                size=(max(row.width-dp(2),1), max(row.height-dp(2),1)),
-                radius=[dp(8)])
+                size=(max(row.width-dp(2), 1), max(row.height-dp(2), 1)),
+                radius=[dp(7)])
         row._bg  = bg
         row._brd = brd
 
@@ -593,36 +678,35 @@ class ChatScreen(Screen):
             r.canvas.before.clear()
             with r.canvas.before:
                 Color(*r._brd)
-                RoundedRectangle(pos=r.pos, size=r.size, radius=[dp(9)])
+                RoundedRectangle(pos=r.pos, size=r.size, radius=[dp(8)])
                 Color(*r._bg)
                 RoundedRectangle(
                     pos=(r.x+dp(1), r.y+dp(1)),
-                    size=(max(r.width-dp(2),1), max(r.height-dp(2),1)),
-                    radius=[dp(8)])
+                    size=(max(r.width-dp(2), 1), max(r.height-dp(2), 1)),
+                    radius=[dp(7)])
         row.bind(pos=_rd, size=_rd)
 
-        bd = BoxLayout(size_hint=(None, None), size=(dp(28), dp(28)))
+        bd = BoxLayout(size_hint=(None, None), size=(dp(26), dp(26)))
         with bd.canvas.before:
             Color(*meta["color"])
             RoundedRectangle(pos=bd.pos, size=bd.size, radius=[dp(6)])
-        bd.bind(pos=lambda w, v, c=meta["color"]: self._rd_sm(w, c),
-                size=lambda w, v, c=meta["color"]: self._rd_sm(w, c))
-        bd.add_widget(Label(text=meta["code"], font_size=sp(9),
-                            bold=True, color=C_WHITE,
-                            size_hint=(None, None), size=(dp(28), dp(28))))
+        bd.bind(pos=lambda w, v, c=meta["color"]: self._rd_badge(w, c),
+                size=lambda w, v, c=meta["color"]: self._rd_badge(w, c))
+        bd.add_widget(Label(text=meta["code"], font_size=sp(9), bold=True,
+                            color=C_WHITE,
+                            size_hint=(None, None), size=(dp(26), dp(26))))
 
         lbl = Label(text=meta["label"], font_size=sp(12),
                     bold=is_act,
-                    color=C_WHITE if is_act else C_WHITE_70,
+                    color=C_BLUE if is_act else C_GRAY,
                     halign="left")
         row.add_widget(bd)
         row.add_widget(lbl)
         row._lbl = lbl
-        row._key = key
         row.bind(on_touch_down=lambda w, t, k=key: self._touch_topic(w, t, k))
         return row
 
-    def _rd_sm(self, w, c):
+    def _rd_badge(self, w, c):
         w.canvas.before.clear()
         with w.canvas.before:
             Color(*c)
@@ -637,19 +721,19 @@ class ChatScreen(Screen):
         self.header_lbl.text = f"Agente ESG  —  {TOPICS[key]['label']}"
         for k, r in self.topic_btns.items():
             act = (k == key)
-            r._bg  = C_BLUE if act else C_NAVY_LIGHT
-            r._brd = C_NEON if act else C_BORDER
+            r._bg  = C_BLUE_PALE if act else C_BG
+            r._brd = C_BLUE      if act else C_BORDER
             r._lbl.bold  = act
-            r._lbl.color = C_WHITE if act else C_WHITE_70
+            r._lbl.color = C_BLUE if act else C_GRAY
             r.canvas.before.clear()
             with r.canvas.before:
                 Color(*r._brd)
-                RoundedRectangle(pos=r.pos, size=r.size, radius=[dp(9)])
+                RoundedRectangle(pos=r.pos, size=r.size, radius=[dp(8)])
                 Color(*r._bg)
                 RoundedRectangle(
                     pos=(r.x+dp(1), r.y+dp(1)),
-                    size=(max(r.width-dp(2),1), max(r.height-dp(2),1)),
-                    radius=[dp(8)])
+                    size=(max(r.width-dp(2), 1), max(r.height-dp(2), 1)),
+                    radius=[dp(7)])
         self._load_quick()
 
     def _show_welcome(self):
@@ -659,26 +743,27 @@ class ChatScreen(Screen):
         name = getattr(app, "operator_name", "Operador")
 
         wrap = BoxLayout(orientation="vertical", size_hint_y=None,
-                         spacing=dp(12), padding=[dp(8), dp(8)])
+                         spacing=dp(10), padding=[dp(4), dp(4)])
+
         card = BoxLayout(orientation="vertical", size_hint_y=None,
-                         padding=[dp(22), dp(18)], spacing=dp(10))
+                         padding=[dp(18), dp(16)], spacing=dp(8))
         with card.canvas.before:
-            Color(*C_NAVY_LIGHT)
-            RoundedRectangle(pos=card.pos, size=card.size, radius=[dp(16)])
-            Color(*C_NEON)
+            Color(*C_WHITE)
+            RoundedRectangle(pos=card.pos, size=card.size, radius=[dp(14)])
+            Color(*C_BORDER)
             Line(rounded_rectangle=(card.x, card.y,
-                                    card.width, card.height, dp(16)),
+                                    card.width, card.height, dp(14)),
                  width=dp(1))
-        card.bind(pos=lambda w, v: self._draw_wcard(w),
-                  size=lambda w, v: self._draw_wcard(w))
+        card.bind(pos=lambda w, v: self._redraw_wcard(w),
+                  size=lambda w, v: self._redraw_wcard(w))
 
         card.add_widget(Label(
             text=f"Bem-vindo, {name}!",
-            font_size=sp(18), bold=True, color=C_NEON,
-            halign="center", size_hint_y=None, height=dp(30)))
+            font_size=sp(16), bold=True, color=C_BLUE,
+            halign="center", size_hint_y=None, height=dp(28)))
         card.add_widget(Label(
-            text="Escolha um tema ou faça sua pergunta.",
-            font_size=sp(13), color=C_WHITE_70,
+            text="Escolha um tema ou faca sua pergunta.",
+            font_size=sp(13), color=C_GRAY,
             halign="center", size_hint_y=None, height=dp(22)))
         card.bind(minimum_height=card.setter("height"))
         wrap.add_widget(card)
@@ -691,13 +776,13 @@ class ChatScreen(Screen):
         self._welcome_wrap = wrap
         self._render_quick()
 
-    def _draw_wcard(self, w):
+    def _redraw_wcard(self, w):
         w.canvas.before.clear()
         with w.canvas.before:
-            Color(*C_NAVY_LIGHT)
-            RoundedRectangle(pos=w.pos, size=w.size, radius=[dp(16)])
-            Color(*C_NEON)
-            Line(rounded_rectangle=(w.x, w.y, w.width, w.height, dp(16)),
+            Color(*C_WHITE)
+            RoundedRectangle(pos=w.pos, size=w.size, radius=[dp(14)])
+            Color(*C_BORDER)
+            Line(rounded_rectangle=(w.x, w.y, w.width, w.height, dp(14)),
                  width=dp(1))
 
     def _render_quick(self):
@@ -705,9 +790,10 @@ class ChatScreen(Screen):
         qs = self.quick_list if self.quick_list else TOPICS[self.topic]["qs"]
         for q in qs[:6]:
             text = q["question"] if isinstance(q, dict) else q
-            btn = CBtn(text=text, bg=C_NAVY_MID, fg=C_WHITE_70,
-                       font_size=sp(12), size_hint_y=None, height=dp(48),
-                       r=9, border=C_BORDER)
+            btn = Btn(text=text, bg=C_BG, fg=C_DARK,
+                      font_size=sp(12),
+                      size_hint_y=None, height=dp(50),
+                      r=8, border_color=C_BORDER_MED)
             btn.bind(on_press=lambda b, q=text: self._prefill(q))
             self.quick_grid.add_widget(btn)
 
@@ -729,14 +815,14 @@ class ChatScreen(Screen):
         self.is_loading = True
         self.send_btn.disabled = True
 
-        self._add_bubble(text, is_user=True, name=name)
+        self._add_bubble(text, is_user=True, initials=name[:2])
         self._typing = self._add_typing()
         self.history.append({"role": "user", "content": text})
 
         payload = json.dumps({
             "question":  text,
             "topic":     self.topic,
-            "tablet_id": f"{TABLET_ID}-{name.lower()}",
+            "tablet_id": f"{TABLET_ID}-{name.lower()[:8]}",
             "history":   list(self.history[-8:]),
         }).encode("utf-8")
 
@@ -758,9 +844,7 @@ class ChatScreen(Screen):
             self.msg_box.remove_widget(self._typing)
         raw    = res.get("answer", "Nao consegui processar. Tente novamente.")
         answer = clean_md(raw)
-        app    = App.get_running_app()
-        name   = getattr(app, "operator_name", "Operador")
-        self._add_bubble(answer, is_user=False, name=name)
+        self._add_bubble(answer, is_user=False)
         self.history.append({"role": "assistant", "content": answer})
         self.is_loading = False
         self.send_btn.disabled = False
@@ -776,23 +860,23 @@ class ChatScreen(Screen):
         self.is_loading = False
         self.send_btn.disabled = False
         self._set_status("Offline", C_RED)
-        Clock.schedule_once(lambda dt: self._scroll_end(), 0.15)
 
     def _set_status(self, text, color):
         self.st_lbl.text  = text
         self.st_lbl.color = color
-        self.st_dot.color = color
+        self._draw_dot(self.st_dot, color)
 
-    def _add_bubble(self, text, is_user=False, name="OP"):
-        b = Bubble(text=text, is_user=is_user, name=name)
+    def _add_bubble(self, text, is_user=False, initials="IB"):
+        b = Bubble(text=text, is_user=is_user, initials=initials)
         self.msg_box.add_widget(b)
         Clock.schedule_once(lambda dt: self._scroll_end(), 0.1)
         return b
 
     def _add_typing(self):
-        lbl = Label(text="Agente digitando...",
-                    font_size=sp(13), color=C_NEON,
-                    size_hint_y=None, height=dp(30), halign="left")
+        lbl = Label(
+            text="Agente digitando...",
+            font_size=sp(13), color=C_BLUE,
+            size_hint_y=None, height=dp(30), halign="left")
         self.msg_box.add_widget(lbl)
         Clock.schedule_once(lambda dt: self._scroll_end(), 0.1)
         return lbl
@@ -827,8 +911,8 @@ class TotemESGApp(App):
     operator_name = "Operador"
 
     def build(self):
-        Window.clearcolor = get_color_from_hex("#0A1628")
-        sm = ScreenManager(transition=FadeTransition(duration=0.3))
+        Window.clearcolor = get_color_from_hex("#F0F2F7")
+        sm = ScreenManager(transition=FadeTransition(duration=0.25))
         sm.add_widget(WelcomeScreen(name="welcome"))
         sm.add_widget(ChatScreen(name="chat"))
         return sm

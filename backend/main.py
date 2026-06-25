@@ -109,7 +109,7 @@ class ChatRequest(BaseModel):
     history:   List[Dict[str, Any]] = []
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class KnowledgeItem(BaseModel):
     category: str

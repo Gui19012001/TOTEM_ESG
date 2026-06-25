@@ -1,11 +1,12 @@
 """
 Totem ESG — Backend FastAPI com Google Gemini (gratuito)
 Deploy: Render.com (free tier)
-Fixes: SQLite threading, Pydantic v1, type hints compatíveis
+Fixes: SQLite threading, HEAD endpoints, error handling robusto
 """
 
 from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import sqlite3
@@ -29,60 +30,67 @@ ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "esg-admin-2024")
 DB_PATH     = Path(os.environ.get("DB_PATH", "totem.db"))
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_KEY}"
+GEMINI_URL = (
+    "https://generativelanguage.googleapis.com/v1beta/models/"
+    f"gemini-2.0-flash:generateContent?key={GEMINI_KEY}"
+)
 
 # ── Banco de dados ────────────────────────────────────────────
+def get_conn():
+    """Abre conexão SQLite com check_same_thread=False (obrigatório para FastAPI)"""
+    conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    return conn
+
 def init_db():
-    # check_same_thread=False necessário para FastAPI async
-    with sqlite3.connect(str(DB_PATH), check_same_thread=False) as conn:
+    conn = get_conn()
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS knowledge (
+            id       INTEGER PRIMARY KEY AUTOINCREMENT,
+            category TEXT NOT NULL,
+            title    TEXT NOT NULL,
+            content  TEXT NOT NULL,
+            updated  TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS logs (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            tablet_id TEXT,
+            topic     TEXT,
+            question  TEXT NOT NULL,
+            answer    TEXT NOT NULL,
+            created   TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS quick_questions (
+            id       INTEGER PRIMARY KEY AUTOINCREMENT,
+            topic    TEXT NOT NULL,
+            question TEXT NOT NULL
+        );
+    """)
+    count = conn.execute("SELECT COUNT(*) FROM quick_questions").fetchone()[0]
+    if count == 0:
         conn.executescript("""
-            CREATE TABLE IF NOT EXISTS knowledge (
-                id       INTEGER PRIMARY KEY AUTOINCREMENT,
-                category TEXT NOT NULL,
-                title    TEXT NOT NULL,
-                content  TEXT NOT NULL,
-                updated  TEXT NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS logs (
-                id        INTEGER PRIMARY KEY AUTOINCREMENT,
-                tablet_id TEXT,
-                topic     TEXT,
-                question  TEXT NOT NULL,
-                answer    TEXT NOT NULL,
-                created   TEXT NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS quick_questions (
-                id       INTEGER PRIMARY KEY AUTOINCREMENT,
-                topic    TEXT NOT NULL,
-                question TEXT NOT NULL
-            );
+            INSERT INTO quick_questions (topic, question) VALUES
+                ('ambiental', 'Qual e a meta de reducao de CO2?'),
+                ('ambiental', 'Como esta o consumo de agua?'),
+                ('ambiental', 'Quanto residuo reciclamos?'),
+                ('seguranca', 'Quantos dias sem acidentes?'),
+                ('seguranca', 'Quais EPIs devo usar?'),
+                ('social',    'Quais programas sociais temos?'),
+                ('politicas', 'Quais sao nossas certificacoes?');
         """)
-        # Insere perguntas padrão apenas se a tabela estiver vazia
-        count = conn.execute("SELECT COUNT(*) FROM quick_questions").fetchone()[0]
-        if count == 0:
-            conn.executescript("""
-                INSERT INTO quick_questions (topic, question) VALUES
-                    ('ambiental', 'Qual e a meta de reducao de CO2?'),
-                    ('ambiental', 'Como esta o consumo de agua?'),
-                    ('ambiental', 'Quanto residuo reciclamos?'),
-                    ('seguranca', 'Quantos dias sem acidentes?'),
-                    ('seguranca', 'Quais EPIs devo usar?'),
-                    ('social',    'Quais programas sociais temos?'),
-                    ('politicas', 'Quais sao nossas certificacoes?');
-            """)
+    conn.commit()
+    conn.close()
 
 init_db()
 
 def get_db():
-    # check_same_thread=False — correção do erro de threading do SQLite com FastAPI
-    conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
-    conn.row_factory = sqlite3.Row
+    conn = get_conn()
     try:
         yield conn
     finally:
         conn.close()
 
-# ── Modelos Pydantic v1 compatíveis ───────────────────────────
+# ── Modelos Pydantic v1 ───────────────────────────────────────
 class ChatRequest(BaseModel):
     question:  str
     topic:     str = "ambiental"
@@ -90,7 +98,6 @@ class ChatRequest(BaseModel):
     history:   List[Dict[str, Any]] = []
 
     class Config:
-        # Pydantic v1
         orm_mode = True
 
 class KnowledgeItem(BaseModel):
@@ -113,26 +120,32 @@ def verify_admin(x_admin_token: str = Header(...)):
 def health():
     return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
 
+@app.head("/health")
+def health_head():
+    """Aceita HEAD do UptimeRobot"""
+    return Response(status_code=200)
+
 @app.get("/ping")
 def ping():
-    """Keep-alive — evita sleep do Render free tier"""
     return {"pong": True}
+
+@app.head("/ping")
+def ping_head():
+    """Aceita HEAD do UptimeRobot"""
+    return Response(status_code=200)
 
 @app.get("/api/quick-questions")
 def get_quick_questions(
     topic: Optional[str] = None,
     db: sqlite3.Connection = Depends(get_db)
 ):
-    try:
-        if topic:
-            rows = db.execute(
-                "SELECT * FROM quick_questions WHERE topic=?", (topic,)
-            ).fetchall()
-        else:
-            rows = db.execute("SELECT * FROM quick_questions").fetchall()
-        return [dict(r) for r in rows]
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    if topic:
+        rows = db.execute(
+            "SELECT * FROM quick_questions WHERE topic=?", (topic,)
+        ).fetchall()
+    else:
+        rows = db.execute("SELECT * FROM quick_questions").fetchall()
+    return [dict(r) for r in rows]
 
 @app.post("/api/chat")
 def chat(
@@ -143,12 +156,9 @@ def chat(
         raise HTTPException(status_code=500, detail="GEMINI_API_KEY nao configurada")
 
     # Base de conhecimento
-    try:
-        rows = db.execute(
-            "SELECT category, title, content FROM knowledge"
-        ).fetchall()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro banco: {str(e)}")
+    rows = db.execute(
+        "SELECT category, title, content FROM knowledge"
+    ).fetchall()
 
     knowledge_text = ""
     for row in rows:
@@ -165,18 +175,16 @@ def chat(
     system_text = (
         "Voce e o Agente ESG de uma fabrica industrial.\n"
         "Responda SEMPRE em portugues brasileiro, de forma clara e simples.\n"
-        "O publico sao operadores do chao de fabrica — use frases curtas e linguagem direta.\n"
+        "O publico sao operadores do chao de fabrica.\n"
         f"Foco atual: {topic_label}.\n\n"
     )
-
     if knowledge_text:
-        system_text += f"BASE DE CONHECIMENTO DA EMPRESA:\n{knowledge_text}\n"
+        system_text += f"BASE DE CONHECIMENTO:\n{knowledge_text}\n"
     else:
-        system_text += "ATENCAO: Base de conhecimento ainda nao configurada. Responda com boas praticas gerais de ESG.\n"
-
+        system_text += "Base de conhecimento ainda nao configurada. Use boas praticas gerais de ESG.\n"
     system_text += "\nSe nao souber, diga honestamente e sugira contatar o responsavel ESG."
 
-    # Monta histórico para o Gemini
+    # Histórico Gemini
     contents = []
     for msg in req.history[-8:]:
         role = "user" if msg.get("role") == "user" else "model"
@@ -186,25 +194,18 @@ def chat(
     payload = {
         "system_instruction": {"parts": [{"text": system_text}]},
         "contents": contents,
-        "generationConfig": {
-            "maxOutputTokens": 1024,
-            "temperature": 0.7,
-        }
+        "generationConfig": {"maxOutputTokens": 1024, "temperature": 0.7},
     }
 
     try:
         resp = requests.post(GEMINI_URL, json=payload, timeout=30)
         resp.raise_for_status()
         data = resp.json()
-
-        # Extrai resposta com tratamento de erro
         candidates = data.get("candidates", [])
         if not candidates:
-            raise HTTPException(status_code=502, detail="Gemini nao retornou resposta")
-
+            raise HTTPException(status_code=502, detail="Gemini nao retornou candidatos")
         answer = candidates[0]["content"]["parts"][0]["text"]
 
-        # Salva log
         try:
             db.execute(
                 "INSERT INTO logs (tablet_id, topic, question, answer, created) VALUES (?,?,?,?,?)",
@@ -213,7 +214,7 @@ def chat(
             )
             db.commit()
         except Exception:
-            pass  # Log falhou mas resposta ainda é retornada
+            pass  # Log falhou mas resposta é retornada
 
         return {"answer": answer}
 
@@ -224,7 +225,7 @@ def chat(
     except requests.exceptions.RequestException as e:
         raise HTTPException(status_code=502, detail=f"Erro conexao Gemini: {str(e)}")
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Erro Gemini: {str(e)}")
+        raise HTTPException(status_code=502, detail=f"Erro: {str(e)}")
 
 # ── Endpoints admin ───────────────────────────────────────────
 @app.get("/api/admin/knowledge", dependencies=[Depends(verify_admin)])
@@ -294,9 +295,9 @@ def get_stats(db: sqlite3.Connection = Depends(get_db)):
         "SELECT topic, COUNT(*) as n FROM logs GROUP BY topic"
     ).fetchall()
     return {
-        "total_questions":  total,
-        "today_questions":  today,
-        "by_topic":         [dict(r) for r in by_topic],
+        "total_questions": total,
+        "today_questions": today,
+        "by_topic": [dict(r) for r in by_topic],
     }
 
 @app.post("/api/admin/quick-questions", dependencies=[Depends(verify_admin)])

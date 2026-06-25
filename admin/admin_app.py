@@ -66,8 +66,8 @@ if page == "📊 Dashboard":
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("Perguntas hoje",   stats["today_questions"])
         c2.metric("Total histórico",  stats["total_questions"])
-        c3.metric("Tokens entrada",   f"{stats['total_tokens_in']:,}")
-        c4.metric("Tokens saída",     f"{stats['total_tokens_out']:,}")
+        c3.metric("Tokens entrada",   stats.get('total_tokens_in', 'N/A'))
+        c4.metric("Tokens saída",     stats.get('total_tokens_out', 'N/A'))
 
         st.markdown("---")
         st.subheader("Perguntas por tema")

@@ -32,7 +32,7 @@ DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 GEMINI_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/"
-    f"gemini-2.5-flash-lite:generateContent?key={GEMINI_KEY}"
+    f"gemini-2.5-flash:generateContent?key={GEMINI_KEY}"
 )
 
 # ── Banco de dados ────────────────────────────────────────────

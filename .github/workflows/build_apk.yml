@@ -1,0 +1,131 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'totem/**'
+      - 'buildozer.spec'
+      - '.github/workflows/build_apk.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validar e injetar secrets no APK
+        shell: bash
+        env:
+          GEMINI_KEY:   ${{ secrets.GEMINI_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          path = Path("totem/totem_app.py")
+          source = path.read_text(encoding="utf-8")
+
+          values = {
+              "SUA_CHAVE_GEMINI_AQUI": os.environ.get("GEMINI_KEY", "").strip(),
+              "SUA_URL_SUPABASE_AQUI": os.environ.get("SUPABASE_URL", "").strip(),
+              "SUA_KEY_SUPABASE_AQUI": os.environ.get("SUPABASE_KEY", "").strip(),
+          }
+
+          missing = [placeholder for placeholder, value in values.items() if not value]
+          if missing:
+              raise SystemExit(
+                  "Secrets ausentes no GitHub Actions: " + ", ".join(missing)
+              )
+
+          if not values["SUA_URL_SUPABASE_AQUI"].startswith("https://"):
+              raise SystemExit("SUPABASE_URL deve começar com https://")
+
+          for placeholder, value in values.items():
+              if placeholder not in source:
+                  raise SystemExit(f"Placeholder não encontrado no código: {placeholder}")
+              source = source.replace(placeholder, value)
+
+          path.write_text(source, encoding="utf-8")
+
+          final = path.read_text(encoding="utf-8")
+          if any(placeholder in final for placeholder in values):
+              raise SystemExit("Falha: ainda existem placeholders após a injeção")
+
+          print("Secrets injetados corretamente.")
+          print("GEMINI_API_KEY carregada:", len(values["SUA_CHAVE_GEMINI_AQUI"]), "caracteres")
+          print("SUPABASE_URL válida: sim")
+          print("SUPABASE_KEY carregada:", len(values["SUA_KEY_SUPABASE_AQUI"]), "caracteres")
+          PY
+
+      - name: Cache Buildozer
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.buildozer
+            ~/.gradle
+          key: buildozer-${{ hashFiles('buildozer.spec') }}
+          restore-keys: buildozer-
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y software-properties-common
+          sudo add-apt-repository -y ppa:deadsnakes/ppa
+          sudo apt-get update -qq
+          sudo apt-get install -y \
+            python3.11 python3.11-venv python3.11-dev python3.11-distutils \
+            git zip unzip openjdk-17-jdk \
+            libffi-dev libssl-dev autoconf automake libtool \
+            pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev \
+            cmake libltdl-dev
+
+      - name: Create Python 3.11 venv and install Buildozer
+        run: |
+          python3.11 -m venv .venv
+          . .venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install --upgrade buildozer cython
+
+      - name: Build APK
+        env:
+          JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
+        run: |
+          . .venv/bin/activate
+          buildozer -v android debug
+
+      - name: Sign APK
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEY_ALIAS:       ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD:    ${{ secrets.KEY_PASSWORD }}
+          STORE_PASSWORD:  ${{ secrets.STORE_PASSWORD }}
+        run: |
+          set -e
+          echo "$KEYSTORE_BASE64" | base64 --decode > keystore.jks
+          APK=$(find bin/ -name "*.apk" | head -1)
+          test -n "$APK"
+          echo "APK encontrado: $APK"
+          APKSIGNER=$(find "$HOME/.buildozer/android/platform/android-sdk/build-tools/" -name "apksigner" | head -1)
+          test -n "$APKSIGNER"
+          "$APKSIGNER" sign \
+            --ks keystore.jks \
+            --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass "pass:$STORE_PASSWORD" \
+            --key-pass "pass:$KEY_PASSWORD" \
+            --out bin/totem-esg-signed.apk \
+            "$APK"
+          "$APKSIGNER" verify --verbose bin/totem-esg-signed.apk
+          echo "APK assinado e verificado com sucesso"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: totem-esg-apk
+          path: bin/totem-esg-signed.apk
+          retention-days: 30

@@ -16,11 +16,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Inject API_URL
+      - name: Inject secrets into totem_app.py
         env:
-          API_URL: ${{ secrets.API_URL }}
+          GEMINI_KEY:   ${{ secrets.GEMINI_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
-          sed -i "s|https://totem-esg.up.railway.app|${API_URL}|g" totem/totem_app.py
+          sed -i "s|SUA_CHAVE_GEMINI_AQUI|${GEMINI_KEY}|g"   totem/totem_app.py
+          sed -i "s|SUA_URL_SUPABASE_AQUI|${SUPABASE_URL}|g" totem/totem_app.py
+          sed -i "s|SUA_KEY_SUPABASE_AQUI|${SUPABASE_KEY}|g" totem/totem_app.py
+          echo "Secrets injetados com sucesso"
 
       - name: Cache Buildozer
         uses: actions/cache@v4
@@ -61,15 +66,15 @@ jobs:
       - name: Sign APK
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_ALIAS:       ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD:    ${{ secrets.KEY_PASSWORD }}
+          STORE_PASSWORD:  ${{ secrets.STORE_PASSWORD }}
         run: |
           echo "$KEYSTORE_BASE64" | base64 --decode > keystore.jks
           APK=$(find bin/ -name "*.apk" | head -1)
           echo "APK encontrado: $APK"
           APKSIGNER=$(find $HOME/.buildozer/android/platform/android-sdk/build-tools/ -name "apksigner" | head -1)
-          echo "apksigner encontrado: $APKSIGNER"
+          echo "apksigner: $APKSIGNER"
           $APKSIGNER sign \
             --ks keystore.jks \
             --ks-key-alias "$KEY_ALIAS" \

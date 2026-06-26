@@ -1,5 +1,5 @@
 """
-Totem ESG — Ibero Group v5.0
+Totem ESG — Ibero Group v5.0.2
 Arquitetura serverless: APK chama Gemini + Supabase diretamente
 Zero backend intermediario — zero quedas
 """
@@ -34,13 +34,19 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL",   "SUA_URL_SUPABASE_AQUI").strip()
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY",   "SUA_KEY_SUPABASE_AQUI").strip()
 TABLET_ID    = os.environ.get("TABLET_ID",      "totem-ibero-01").strip()
 
-# gemini-1.5-flash não é mais um modelo válido para um APK novo em 2026.
-# 2.5 Flash continua estável e possui camada gratuita.
-GEMINI_MODEL = "gemini-2.5-flash"
-GEMINI_URL = (
-    "https://generativelanguage.googleapis.com/v1beta/models/"
-    f"{GEMINI_MODEL}:generateContent"
+# O totem usa um modelo leve como principal e mantém um segundo modelo
+# como contingência. Isso reduz falhas temporárias de alta demanda (HTTP 503).
+GEMINI_MODELS = (
+    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash",
 )
+GEMINI_RETRY_DELAYS = (2, 5)
+
+def gemini_url(model):
+    return (
+        "https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{model}:generateContent"
+    )
 
 # ── Paleta clean branco + azul Ibero ─────────────────────────
 C_WHITE      = get_color_from_hex("#FFFFFF")
@@ -478,6 +484,8 @@ class ChatScreen(Screen):
         super().__init__(**kw)
         self._built       = False
         self._chat_typed  = ""
+        self._typing      = None
+        self._last_failed_question = ""
 
     def on_enter(self):
         if not self._built:
@@ -636,24 +644,51 @@ class ChatScreen(Screen):
             "system_instruction": {"parts": [{"text": system_text}]},
             "contents": contents,
             "generationConfig": {
-                "maxOutputTokens": 2048,
-                "temperature":     0.7,
+                # Respostas curtas são melhores para o totem e exigem menos
+                # processamento, diminuindo tempo de espera e falhas transitórias.
+                "maxOutputTokens": 700,
+                "temperature":     0.6,
             },
         }).encode("utf-8")
 
+        self._send_gemini_request(
+            question=text,
+            payload=payload,
+            model_index=0,
+            retry_index=0,
+        )
+
+    def _send_gemini_request(self, question, payload, model_index=0, retry_index=0):
+        """Envia a pergunta com repetição automática e modelo reserva."""
+        model_index = max(0, min(model_index, len(GEMINI_MODELS) - 1))
+        model = GEMINI_MODELS[model_index]
+
+        self._set_status(
+            "Consultando IA" if retry_index == 0 else "Tentando novamente",
+            C_BLUE,
+        )
+
         UrlRequest(
-            GEMINI_URL,
+            gemini_url(model),
             req_body=payload,
             req_headers={
                 "Content-Type": "application/json",
                 "x-goog-api-key": GEMINI_KEY,
             },
             on_success=lambda req, res: Clock.schedule_once(
-                lambda dt: self._on_answer(res, text), 0),
+                lambda dt: self._on_answer(res, question), 0),
             on_failure=lambda req, res: Clock.schedule_once(
-                lambda dt: self._on_http_failure(req, res), 0),
+                lambda dt: self._on_http_failure(
+                    req, res, question, payload, model_index, retry_index
+                ),
+                0,
+            ),
             on_error=lambda req, err: Clock.schedule_once(
-                lambda dt: self._on_error(str(err)), 0),
+                lambda dt: self._on_network_failure(
+                    str(err), question, payload, model_index, retry_index
+                ),
+                0,
+            ),
             timeout=60,
         )
 
@@ -673,56 +708,137 @@ class ChatScreen(Screen):
         self._save_log(question, answer)
         Clock.schedule_once(lambda dt: self._scroll_end(), 0.15)
 
-    def _on_http_failure(self, req, res):
-        """Chamado quando a API responde com HTTP >= 400."""
+    def _retry_or_fallback(
+        self, question, payload, model_index, retry_index, status
+    ):
+        """Tenta novamente e, depois, troca para o modelo de contingência."""
+        if retry_index < len(GEMINI_RETRY_DELAYS):
+            delay = GEMINI_RETRY_DELAYS[retry_index]
+            self._set_status(f"IA ocupada - nova tentativa em {delay}s", C_BLUE)
+            Clock.schedule_once(
+                lambda dt: self._send_gemini_request(
+                    question, payload, model_index, retry_index + 1
+                ),
+                delay,
+            )
+            return True
+
+        if model_index + 1 < len(GEMINI_MODELS):
+            self._set_status("Usando IA alternativa", C_BLUE)
+            Clock.schedule_once(
+                lambda dt: self._send_gemini_request(
+                    question, payload, model_index + 1, 0
+                ),
+                1,
+            )
+            return True
+
+        return False
+
+    def _finish_request_error(self, message, state, question=""):
         if self._typing and self._typing.parent:
             self.msg_box.remove_widget(self._typing)
+        self._typing = None
+        self._add_bubble(message, is_user=False)
+        self.is_loading = False
+        self.send_btn.disabled = False
+        self._set_status(state, C_RED)
 
+        # Preserva a pergunta para o colaborador reenviar sem digitá-la de novo.
+        if question:
+            self._last_failed_question = question
+            self._chat_typed = question[:120]
+            self._update_chat_display()
+
+    def _on_http_failure(
+        self, req, res, question, payload, model_index, retry_index
+    ):
+        """Trata respostas HTTP da API sem confundir sobrecarga com internet offline."""
         status = getattr(req, "resp_status", 0) or 0
         detail = api_error_detail(res)
+        if detail:
+            print(f"Gemini HTTP {status}: {detail}")
 
-        if status == 429:
-            msg = "Limite gratuito temporariamente atingido. Aguarde 1 minuto e tente novamente."
-            state = "Limite IA"
-        elif status == 403:
+        # 500/502/503/504 são falhas temporárias do serviço.
+        # 429 também pode ser transitório e pode variar entre modelos.
+        if status in (429, 500, 502, 503, 504):
+            if self._retry_or_fallback(
+                question, payload, model_index, retry_index, status
+            ):
+                return
+
+            if status == 429:
+                msg = (
+                    "A cota gratuita da IA está ocupada neste momento. "
+                    "Sua pergunta foi preservada; aguarde um pouco e toque em Enviar."
+                )
+                state = "Limite IA"
+            else:
+                msg = (
+                    "A IA está temporariamente congestionada. Tentamos novamente "
+                    "e também usamos o modelo alternativo, mas o serviço ainda não "
+                    "respondeu. Sua pergunta foi preservada para uma nova tentativa."
+                )
+                state = "IA ocupada"
+
+            self._finish_request_error(msg, state, question)
+            return
+
+        if status == 403:
             msg = (
-                "A chave do Gemini foi recusada. Crie uma nova chave no Google AI Studio "
-                "ou aplique a restrição 'Gemini API only' e gere o APK novamente."
+                "A chave do Gemini foi recusada. Verifique as permissões da chave "
+                "no Google AI Studio e gere o APK novamente."
             )
             state = "Erro IA"
         elif status == 401:
             msg = "A chave do Gemini está ausente ou inválida. Gere novamente o APK."
             state = "Erro IA"
         elif status == 404:
-            msg = f"O modelo {GEMINI_MODEL} não foi encontrado para esta chave."
+            current_model = GEMINI_MODELS[model_index]
+            # Um modelo indisponível não deve derrubar o totem: tenta o próximo.
+            if model_index + 1 < len(GEMINI_MODELS):
+                self._set_status("Trocando modelo de IA", C_BLUE)
+                Clock.schedule_once(
+                    lambda dt: self._send_gemini_request(
+                        question, payload, model_index + 1, 0
+                    ),
+                    1,
+                )
+                return
+            msg = f"O modelo {current_model} não está disponível para esta chave."
             state = "Erro IA"
         elif status == 400:
             msg = "A solicitação enviada à IA foi recusada por formato inválido."
             state = "Erro IA"
-        elif status >= 500:
-            msg = "Serviço de IA temporariamente indisponível. Tente em instantes."
-            state = "IA indisponível"
         else:
             msg = f"A API respondeu com erro HTTP {status}."
             state = "Erro IA"
 
-        # Exibe um resumo técnico útil para diagnóstico, sem mostrar a chave.
-        if detail:
-            msg += f" Detalhe: {detail[:240]}"
+        self._finish_request_error(msg, state, question)
 
-        self._add_bubble(msg, is_user=False)
-        self.is_loading = False
-        self.send_btn.disabled = False
-        self._set_status(state, C_RED)
+    def _on_network_failure(
+        self, err, question, payload, model_index, retry_index
+    ):
+        """Repete erros de transporte antes de declarar o tablet offline."""
+        print(f"Erro de rede Gemini: {err}")
+        if self._retry_or_fallback(
+            question, payload, model_index, retry_index, 0
+        ):
+            return
+
+        self._finish_request_error(
+            "Não foi possível alcançar a IA. Verifique o Wi-Fi e tente novamente.",
+            "Offline",
+            question,
+        )
+        Clock.schedule_once(lambda dt: self._ping_internet(), 10)
 
     def _on_error(self, err=None):
-        """Chamado quando ocorre erro de rede/conexao (sem resposta HTTP)."""
-        if self._typing and self._typing.parent:
-            self.msg_box.remove_widget(self._typing)
-        self._add_bubble("Sem conexao. Verifique o Wi-Fi e tente novamente.", is_user=False)
-        self.is_loading = False
-        self.send_btn.disabled = False
-        self._set_status("Offline", C_RED)
+        """Mantido para compatibilidade com chamadas antigas."""
+        self._finish_request_error(
+            "Sem conexão. Verifique o Wi-Fi e tente novamente.",
+            "Offline",
+        )
         Clock.schedule_once(lambda dt: self._ping_internet(), 10)
 
     def _ping_internet(self):

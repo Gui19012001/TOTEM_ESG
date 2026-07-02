@@ -115,56 +115,104 @@ TOPICS = {
 # ── Banco de perguntas do Quiz ────────────────────────────────
 QUIZ_DATA = {
     "ambiental": [
-        {"q": "O que a Ibero Group compromete-se a reduzir?",
-         "a": ["Consumo de agua, energia e residuos", "Apenas emissoes de CO2", "Numero de funcionarios"], "c": 0},
-        {"q": "Qual norma rege a gestao ambiental?",
-         "a": ["ISO 9001", "ISO 45001", "ISO 14001"], "c": 2},
-        {"q": "Proteger o meio ambiente e prevenir a poluicao sao:",
-         "a": ["Sugestoes internas", "Compromissos da Politica Integrada", "Metas de longo prazo"], "c": 1},
+        {"q": "O que a Ibero Group se compromete a reduzir?",
+         "a": ["Consumo de agua, energia e residuos", "Apenas emissoes de CO2", "Numero de fornecedores"], "correct": "Consumo de agua, energia e residuos"},
+        {"q": "Qual norma rege a gestao ambiental na Ibero Group?",
+         "a": ["ISO 9001", "ISO 45001", "ISO 14001"], "correct": "ISO 14001"},
+        {"q": "Proteger o meio ambiente e prevenir a poluicao sao compromissos:",
+         "a": ["Apenas da lideranca", "Da Politica Integrada Ibero", "Do governo federal"], "correct": "Da Politica Integrada Ibero"},
         {"q": "Crescimento com sustentabilidade e um:",
-         "a": ["Custo operacional", "Valor da Ibero Group", "Projeto futuro"], "c": 1},
+         "a": ["Custo operacional elevado", "Valor da Ibero Group", "Projeto de longo prazo"], "correct": "Valor da Ibero Group"},
+        {"q": "Reduzir residuos solidos contribui para:",
+         "a": ["Protecao ambiental e sustentabilidade", "Apenas reducao de custos", "Aumento da producao"], "correct": "Protecao ambiental e sustentabilidade"},
+        {"q": "A Ibero Group monitora indicadores ambientais para:",
+         "a": ["Cumprir exigencias legais apenas", "Melhorar continuamente e reduzir impactos", "Apresentar relatorios externos"], "correct": "Melhorar continuamente e reduzir impactos"},
+        {"q": "Economizar energia eletrica na fabrica ajuda a:",
+         "a": ["Reduzir impacto ambiental e custos", "Aumentar a producao", "Diminuir a qualidade"], "correct": "Reduzir impacto ambiental e custos"},
+        {"q": "Reciclar materiais na industria significa:",
+         "a": ["Descartar tudo no lixo comum", "Reaproveitar e reduzir residuos", "Queimar os residuos"], "correct": "Reaproveitar e reduzir residuos"},
     ],
     "seguranca": [
         {"q": "EPI significa:",
-         "a": ["Equipamento de Protecao Industrial", "Equipamento de Protecao Individual", "Exame Periodico Interno"], "c": 1},
+         "a": ["Equipamento de Protecao Industrial", "Equipamento de Protecao Individual", "Exame Periodico Interno"], "correct": "Equipamento de Protecao Individual"},
         {"q": "A ISO 45001 trata de:",
-         "a": ["Qualidade do produto", "Saude e seguranca no trabalho", "Gestao ambiental"], "c": 1},
-        {"q": "Ao ver um risco de acidente voce deve:",
-         "a": ["Ignorar e continuar", "Aguardar alguem reportar", "Comunicar ao responsavel imediatamente"], "c": 2},
+         "a": ["Qualidade do produto", "Saude e seguranca no trabalho", "Gestao ambiental"], "correct": "Saude e seguranca no trabalho"},
+        {"q": "Ao identificar um risco de acidente, voce deve:",
+         "a": ["Ignorar e continuar trabalhando", "Aguardar alguem reportar", "Comunicar ao responsavel imediatamente"], "correct": "Comunicar ao responsavel imediatamente"},
         {"q": "Dias sem acidente e conquista:",
-         "a": ["Apenas da lideranca", "De toda a equipe", "So do depto de seguranca"], "c": 1},
+         "a": ["Apenas da lideranca", "De toda a equipe", "Do departamento de seguranca"], "correct": "De toda a equipe"},
+        {"q": "Ao ver um colega sem EPI, o correto e:",
+         "a": ["Ignorar, nao e sua responsabilidade", "Orientar e reportar ao responsavel", "Esperar a supervisao agir"], "correct": "Orientar e reportar ao responsavel"},
+        {"q": "Uma analise de risco serve para:",
+         "a": ["Punir trabalhadores", "Identificar e prevenir acidentes", "Aumentar a produtividade"], "correct": "Identificar e prevenir acidentes"},
+        {"q": "Em caso de acidente, o primeiro passo e:",
+         "a": ["Continuar a atividade", "Prestar socorro e acionar a emergencia", "Aguardar o turno terminar"], "correct": "Prestar socorro e acionar a emergencia"},
+        {"q": "Usar o EPI corretamente e responsabilidade:",
+         "a": ["Somente da empresa", "De cada colaborador", "Apenas do setor de seguranca"], "correct": "De cada colaborador"},
     ],
     "social": [
         {"q": "O primeiro valor da Ibero Group e:",
-         "a": ["Crescimento com sustentabilidade", "Nossa gente e nossa forca", "Todos pelo cliente"], "c": 1},
+         "a": ["Crescimento com sustentabilidade", "Nossa gente e nossa forca", "Todos pelo cliente"], "correct": "Nossa gente e nossa forca"},
         {"q": "Capacitar colaboradores contribui para:",
-         "a": ["Apenas reduzir custos", "Melhoria continua e desenvolvimento", "Aumentar horas extras"], "c": 1},
+         "a": ["Apenas reducao de custos", "Melhoria continua e desenvolvimento", "Aumento das horas extras"], "correct": "Melhoria continua e desenvolvimento"},
         {"q": "Confianca nas relacoes e:",
-         "a": ["Um valor da Ibero Group", "Uma meta de vendas", "Uma politica de RH"], "c": 0},
+         "a": ["Um valor da Ibero Group", "Uma meta de vendas", "Uma diretriz de RH"], "correct": "Um valor da Ibero Group"},
+        {"q": "Um bom programa social comeca com:",
+         "a": ["Beneficios financeiros", "Respeito e valorizacao das pessoas", "Plano de carreira"], "correct": "Respeito e valorizacao das pessoas"},
+        {"q": "Comprometimento com o resultado significa:",
+         "a": ["Trabalhar mais horas", "Entregar com qualidade e responsabilidade", "Aumentar metas sozinho"], "correct": "Entregar com qualidade e responsabilidade"},
+        {"q": "Diversidade e inclusao no trabalho:",
+         "a": ["Nao afetam resultados", "Fortalecem a equipe e a inovacao", "Sao obrigacoes legais apenas"], "correct": "Fortalecem a equipe e a inovacao"},
+        {"q": "O valor 'Todos pelo cliente' significa:",
+         "a": ["Focar apenas em vendas", "Toda a equipe unida pela satisfacao do cliente", "Somente o comercial atende clientes"], "correct": "Toda a equipe unida pela satisfacao do cliente"},
     ],
     "politicas": [
         {"q": "A missao da Ibero Group e fornecer:",
-         "a": ["Alimentos industriais", "Sistemas de suspensoes e eixos", "Software"], "c": 1},
+         "a": ["Alimentos industriais", "Sistemas de suspensoes, eixos e acoplamentos", "Software de gestao"], "correct": "Sistemas de suspensoes, eixos e acoplamentos"},
         {"q": "A Politica Integrada busca:",
-         "a": ["Resultado sustentavel para o negocio", "Crescimento a qualquer custo", "Reduzir portfolio"], "c": 0},
+         "a": ["Resultado sustentavel para o negocio", "Crescimento a qualquer custo", "Reducao do portfolio"], "correct": "Resultado sustentavel para o negocio"},
         {"q": "Atender requisitos legais e:",
-         "a": ["Opcional", "Compromisso da Politica Integrada", "So da diretoria"], "c": 1},
+         "a": ["Opcional para empresas privadas", "Compromisso da Politica Integrada", "Responsabilidade so da diretoria"], "correct": "Compromisso da Politica Integrada"},
+        {"q": "A visao da Ibero Group e ser reconhecida como:",
+         "a": ["Maior empresa do Brasil", "Referencia global em produtos e relacoes duraveis", "Lider em exportacoes"], "correct": "Referencia global em produtos e relacoes duraveis"},
+        {"q": "Melhorar a satisfacao do cliente e objetivo:",
+         "a": ["Apenas do comercial", "Do sistema de gestao da qualidade", "Somente da assistencia tecnica"], "correct": "Do sistema de gestao da qualidade"},
+        {"q": "Reduzir o retrabalho contribui para:",
+         "a": ["Apenas corte de custos", "Eficiencia dos processos e qualidade", "Reducao da equipe"], "correct": "Eficiencia dos processos e qualidade"},
+        {"q": "As certificacoes ISO da Ibero garantem:",
+         "a": ["Apenas marketing", "Qualidade, seguranca e gestao ambiental", "Aumento de precos"], "correct": "Qualidade, seguranca e gestao ambiental"},
     ],
     "pessoas": [
-        {"q": "O Depto. de Pessoas e responsavel por:",
-         "a": ["Controle de qualidade", "Gestao de beneficios e desenvolvimento", "Manutencao"], "c": 1},
-        {"q": "Avaliacao de desempenho serve para:",
-         "a": ["Punir colaboradores", "Mapear crescimento e desenvolvimento", "Reduzir salarios"], "c": 1},
-        {"q": "Um ambiente saudavel depende:",
-         "a": ["So da lideranca", "De todos os colaboradores", "Apenas do RH"], "c": 1},
+        {"q": "O Departamento de Pessoas e responsavel por:",
+         "a": ["Controle de qualidade", "Gestao de beneficios e desenvolvimento", "Manutencao de equipamentos"], "correct": "Gestao de beneficios e desenvolvimento"},
+        {"q": "A avaliacao de desempenho serve para:",
+         "a": ["Punir colaboradores", "Mapear crescimento e desenvolvimento", "Reduzir salarios"], "correct": "Mapear crescimento e desenvolvimento"},
+        {"q": "Um ambiente de trabalho saudavel depende:",
+         "a": ["Somente da lideranca", "De todos os colaboradores", "Apenas do RH"], "correct": "De todos os colaboradores"},
+        {"q": "A integracao de novos colaboradores ajuda a:",
+         "a": ["Aumentar a burocracia", "Acelerar a adaptacao e produtividade", "Reduzir responsabilidades"], "correct": "Acelerar a adaptacao e produtividade"},
+        {"q": "O feedback no trabalho serve para:",
+         "a": ["Criticar o desempenho", "Orientar e desenvolver colaboradores", "Justificar demissoes"], "correct": "Orientar e desenvolver colaboradores"},
+        {"q": "Um plano de carreira estruturado beneficia:",
+         "a": ["Apenas a empresa", "O colaborador e a empresa", "Somente o RH"], "correct": "O colaborador e a empresa"},
+        {"q": "Investir em treinamento dos colaboradores:",
+         "a": ["E gasto desnecessario", "Melhora resultados e engajamento", "So beneficia a lideranca"], "correct": "Melhora resultados e engajamento"},
     ],
     "processos": [
-        {"q": "Engenharia de Processos busca:",
-         "a": ["Aumentar etapas", "Melhorar eficiencia e reduzir retrabalho", "Manter processos iguais"], "c": 1},
+        {"q": "A Engenharia de Processos busca principalmente:",
+         "a": ["Aumentar o numero de etapas", "Melhorar eficiencia e reduzir retrabalho", "Manter processos iguais"], "correct": "Melhorar eficiencia e reduzir retrabalho"},
         {"q": "Indicadores de qualidade servem para:",
-         "a": ["Cumprir normas apenas", "Monitorar e melhorar continuamente", "Aumentar burocracia"], "c": 1},
-        {"q": "Melhoria de processo deve ser:",
-         "a": ["Implementada sem aviso", "Comunicada ao responsavel", "Mantida em segredo"], "c": 1},
+         "a": ["Cumprir normas apenas", "Monitorar e melhorar continuamente", "Aumentar a burocracia"], "correct": "Monitorar e melhorar continuamente"},
+        {"q": "Uma melhoria de processo deve ser:",
+         "a": ["Implementada sem aviso previo", "Comunicada ao responsavel pela area", "Mantida em sigilo"], "correct": "Comunicada ao responsavel pela area"},
+        {"q": "Kaizen significa:",
+         "a": ["Parar e reiniciar processos", "Melhoria continua e gradual", "Aumentar a velocidade"], "correct": "Melhoria continua e gradual"},
+        {"q": "O mapeamento de processos serve para:",
+         "a": ["Aumentar reunioes", "Visualizar e identificar ineficiencias", "Reduzir funcionarios"], "correct": "Visualizar e identificar ineficiencias"},
+        {"q": "A padronizacao de processos garante:",
+         "a": ["Menos autonomia", "Consistencia e qualidade nos resultados", "Aumento de custo"], "correct": "Consistencia e qualidade nos resultados"},
+        {"q": "Reduzir desperdicios no processo produtivo:",
+         "a": ["Diminui a qualidade", "Aumenta eficiencia e sustentabilidade", "Atrasa a producao"], "correct": "Aumenta eficiencia e sustentabilidade"},
     ],
 }
 
@@ -588,95 +636,91 @@ class ChatScreen(Screen):
 
     # ── Reconhecimento de voz (Android) ──────────────────────
     def _start_voice(self, *_):
-        """Inicia reconhecimento de voz pelo SpeechRecognizer do Android."""
+        """Abre o reconhecimento de voz do Android via Intent (pt-BR)."""
         self._reset_inactivity()
         try:
-            from jnius import autoclass
-            SpeechRecognizer = autoclass(
-                "android.speech.SpeechRecognizer")
-            RecognizerIntent = autoclass(
-                "android.speech.RecognizerIntent")
-            Intent = autoclass("android.content.Intent")
-            PythonActivity = autoclass(
-                "org.kivy.android.PythonActivity")
+            from jnius import autoclass, cast
+            from android import activity  # fornecido pelo python-for-android
 
-            context = PythonActivity.mActivity
-            if not SpeechRecognizer.isRecognitionAvailable(context):
-                self._add_bubble(
-                    "Reconhecimento de voz nao disponivel neste dispositivo.",
-                    is_user=False)
-                return
-
-            self._listening = True
-            self._set_status("Ouvindo...", C_BLUE)
-            self.mic_btn._bg = get_color_from_hex("#E53935")
-            self.mic_btn._draw()
+            Intent           = autoclass("android.content.Intent")
+            RecognizerIntent = autoclass("android.speech.RecognizerIntent")
+            PythonActivity   = autoclass("org.kivy.android.PythonActivity")
+            current_activity = cast(
+                "android.app.Activity", PythonActivity.mActivity)
 
             intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
             intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                             RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pt-BR")
             intent.putExtra(RecognizerIntent.EXTRA_PROMPT,
-                            "Fale sua pergunta ESG...")
+                            "Fale sua pergunta...")
             intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
 
-            REQUEST_SPEECH = 1234
+            self._SPEECH_REQUEST = 1001
+            self._RecognizerIntent = RecognizerIntent
 
-            class _Listener(autoclass(
-                    "android.speech.RecognitionListener")(object)):
-                def onResults(self_inner, bundle):
-                    results = bundle.getStringArrayList(
-                        RecognizerIntent.EXTRA_RESULTS)
+            # Registra callback do resultado
+            activity.bind(on_activity_result=self._on_speech_activity_result)
+
+            self._listening = True
+            self._set_status("Ouvindo...", C_BLUE)
+            self.mic_btn._bg = get_color_from_hex("#E53935")
+            self.mic_btn._fg = C_WHITE
+            self.mic_btn.text = "Ouvindo"
+            self.mic_btn._draw()
+
+            current_activity.startActivityForResult(
+                intent, self._SPEECH_REQUEST)
+
+        except Exception as e:
+            print(f"Erro voz: {e}")
+            self._reset_mic()
+            self._add_bubble(
+                "O reconhecimento de voz nao esta disponivel. "
+                "Use o teclado para digitar sua pergunta.",
+                is_user=False)
+
+    def _on_speech_activity_result(self, request_code, result_code, intent):
+        """Recebe o texto reconhecido pelo Android."""
+        try:
+            from jnius import autoclass
+            Activity = autoclass("android.app.Activity")
+            if request_code == getattr(self, "_SPEECH_REQUEST", 1001):
+                if result_code == Activity.RESULT_OK and intent is not None:
+                    results = intent.getStringArrayListExtra(
+                        self._RecognizerIntent.EXTRA_RESULTS)
                     if results and results.size() > 0:
                         text = results.get(0)
                         Clock.schedule_once(
                             lambda dt: self._on_voice_result(text), 0)
-                    else:
-                        Clock.schedule_once(
-                            lambda dt: self._on_voice_error(), 0)
-                def onError(self_inner, error):
-                    Clock.schedule_once(lambda dt: self._on_voice_error(), 0)
-                def onBeginningOfSpeech(self_inner): pass
-                def onEndOfSpeech(self_inner): pass
-                def onReadyForSpeech(self_inner, p): pass
-                def onBufferReceived(self_inner, b): pass
-                def onPartialResults(self_inner, b): pass
-                def onRmsChanged(self_inner, v): pass
-                def onEvent(self_inner, t, b): pass
-
-            recognizer = SpeechRecognizer.createSpeechRecognizer(context)
-            recognizer.setRecognitionListener(_Listener())
-            recognizer.startListening(intent)
-            self._recognizer = recognizer
-
+                        return
+                Clock.schedule_once(lambda dt: self._on_voice_error(), 0)
         except Exception as e:
-            self._listening = False
-            self._set_status("Online", C_GREEN)
-            if hasattr(self, "mic_btn"):
-                self.mic_btn._bg = C_BG
-                self.mic_btn._draw()
-            self._add_bubble(
-                "Voz nao disponivel neste APK. Use o teclado.",
-                is_user=False)
+            print(f"Erro resultado voz: {e}")
+            Clock.schedule_once(lambda dt: self._on_voice_error(), 0)
+
+    def _reset_mic(self):
+        self._listening = False
+        self._set_status("Online", C_GREEN)
+        if hasattr(self, "mic_btn"):
+            self.mic_btn._bg   = C_BLUE_PALE
+            self.mic_btn._fg   = C_BLUE
+            self.mic_btn.color = C_BLUE
+            self.mic_btn.text  = "Falar"
+            self.mic_btn._draw()
 
     def _on_voice_result(self, text):
-        self._listening = False
-        self._set_status("Online", C_GREEN)
-        if hasattr(self, "mic_btn"):
-            self.mic_btn._bg = C_BG
-            self.mic_btn._draw()
-        self._chat_typed = text
-        self._update_chat_display()
-        self.send_msg()
+        self._reset_mic()
+        if text and text.strip():
+            self._chat_typed = text.strip()[:120]
+            self._update_chat_display()
+            self.send_msg()
 
     def _on_voice_error(self):
-        self._listening = False
-        self._set_status("Online", C_GREEN)
-        if hasattr(self, "mic_btn"):
-            self.mic_btn._bg = C_BG
-            self.mic_btn._draw()
-        self._add_bubble("Nao entendi. Tente falar mais perto ou use o teclado.",
-                         is_user=False)
+        self._reset_mic()
+        self._add_bubble(
+            "Nao entendi o que voce falou. Tente novamente ou use o teclado.",
+            is_user=False)
 
     # ── Envio de mensagem ─────────────────────────────────────
     def send_msg(self, *_):
@@ -996,11 +1040,11 @@ class ChatScreen(Screen):
                       size=lambda w, v: self._rdraw_disp(w))
         disp_box.add_widget(self.chat_display)
 
-        # Botão microfone
-        self.mic_btn = Btn(text="mic", bg=C_BG, fg=C_GRAY,
-                           font_size=sp(13), bold=True,
-                           size_hint_x=None, width=dp(44), r=10,
-                           border_color=C_BORDER_MED)
+        # Botão microfone (fala em vez de digitar)
+        self.mic_btn = Btn(text="Falar", bg=C_BLUE_PALE, fg=C_BLUE,
+                           font_size=sp(11), bold=True,
+                           size_hint_x=None, width=dp(56), r=10,
+                           border_color=C_BLUE_MUTED)
         self.mic_btn.bind(on_press=self._start_voice)
 
         self.send_btn = Btn(text=">", bg=C_BLUE, fg=C_WHITE,
@@ -1318,8 +1362,21 @@ class QuizScreen(Screen):
     def start_quiz(self, topic):
         import random
         self._topic = topic
-        pool        = QUIZ_DATA.get(topic, QUIZ_DATA["ambiental"])
-        self._qs    = random.sample(pool, min(3, len(pool)))
+        pool = list(QUIZ_DATA.get(topic, QUIZ_DATA["ambiental"]))
+        random.shuffle(pool)
+        n = min(5, len(pool))
+        selected = pool[:n]
+        # Embaralha as alternativas de cada pergunta (evita resposta sempre na mesma posicao)
+        self._qs = []
+        for item in selected:
+            options = list(item["a"])
+            correct_text = item["correct"]
+            random.shuffle(options)
+            self._qs.append({
+                "q": item["q"],
+                "a": options,
+                "c": options.index(correct_text),
+            })
         self._idx   = 0
         self._score = 0
         if not self._built:
@@ -1365,7 +1422,7 @@ class QuizScreen(Screen):
 
         # Progresso
         prog_row = BoxLayout(size_hint_y=None, height=dp(26), spacing=dp(8))
-        self.prog_lbl = Label(text="Pergunta 1 de 3", font_size=sp(11),
+        self.prog_lbl = Label(text="Pergunta 1 de 5", font_size=sp(11),
                               color=C_GRAY_LIGHT, halign="left", size_hint_x=1)
         self.score_lbl = Label(text="0 pts", font_size=sp(11), bold=True,
                                color=C_BLUE, size_hint_x=None, width=dp(60),
@@ -1475,7 +1532,22 @@ class QuizScreen(Screen):
             self.feedback_lbl.text  = "Nao foi dessa vez. Resposta correta em verde!"
         self.score_lbl.text = f"{self._score} pts"
         self._idx += 1
-        Clock.schedule_once(lambda dt: self._show_q(), 2.2)
+        # Aguarda para o operador ver o feedback, depois transiciona suave
+        Clock.schedule_once(lambda dt: self._fade_next(), 2.0)
+
+    def _fade_next(self):
+        from kivy.animation import Animation
+        card = self.q_card_widget
+        anim = Animation(opacity=0.0, duration=0.2)
+        anim.bind(on_complete=lambda *a: self._after_fade())
+        anim.start(card)
+
+    def _after_fade(self):
+        from kivy.animation import Animation
+        self._show_q()
+        card = self.q_card_widget
+        card.opacity = 0.0
+        Animation(opacity=1.0, duration=0.25).start(card)
 
     def _show_result(self):
         total = len(self._qs)
